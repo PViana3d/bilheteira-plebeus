@@ -1,0 +1,8 @@
+Windows Registry Editor Version 5.00
+
+; Bilheteira Plebeus - impressao de bilhetes (rolo de 58 mm)
+; Desliga cabecalhos e rodapes na impressao do Chrome e define o papel predefinido para o tamanho do bilhete.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]
+"PrintHeaderFooter"=dword:00000000
+"PrintingPaperSizeDefault"="{\"name\":\"custom\",\"custom_size\":{\"width\":58000,\"height\":100000}}"

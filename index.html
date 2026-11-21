@@ -195,21 +195,12 @@ body{margin:0}
 .gate h2 span{color:var(--velvet)}
 .staff-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .staff-row span{overflow:hidden;text-overflow:ellipsis}
-#printArea{display:none}
 .role-pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:9px;background:var(--sunk);color:var(--ink)}
 .role-pill.admin{background:var(--velvet);color:var(--velvet-ink)}
 body.role-user #mapCard{display:none}
 @media (min-width:1150px){ body.role-user .app{grid-template-columns:230px minmax(0,1fr) minmax(0,1.2fr)} }
 .staff-row select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px}
-@media print{
-  body{background:#fff;padding:0;margin:0}
-  body>*:not(#printArea){display:none!important}
-  #printArea{display:block}
-  #printArea img{display:block;margin:0 auto;break-after:page;page-break-after:always}
-  #printArea img:last-child{break-after:auto;page-break-after:auto}
-}
 </style>
-<style id="pageStyle"></style>
 </head>
 <body>
 
@@ -259,7 +250,7 @@ body.role-user #mapCard{display:none}
 <div class="toast" id="toast" hidden></div>
 <div class="overlay" id="staffOverlay" hidden></div>
 <div class="gate" id="gate"><div class="card" id="gateCard"><p class="muted" style="margin:0">A abrir…</p></div></div>
-<div id="printArea"></div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
@@ -1046,7 +1037,8 @@ async function saveVenue() {
 }
 
 /* ---------- Tickets ---------- */
-const PAPERS = { "80": { w: 80, print: 72, name: "80 mm" }, "58": { w: 58, print: 48, name: "58 mm" } };
+/* w = roll width, print = printable width, h = fixed ticket length (every ticket has the same size, so the printer cuts each one at the same length) */
+const PAPERS = { "80": { w: 80, print: 72, h: 150, name: "80 mm" }, "58": { w: 58, print: 48, h: 100, name: "58 mm" } };
 const DPMM = 8; /* 203 dpi thermal heads */
 const paperOf = () => { const e = curEvent(); return e && PAPERS[e.paper] ? e.paper : "80"; };
 const firstPos = (b) => { const s = S.layout.idx.get((b.seats || [])[0]); return s ? s.zi * 1e4 + s.ri * 100 + s.pos : 1e9; };
@@ -1088,7 +1080,7 @@ function drawTicket(t, paperKey) {
   let y = px(6);
   if (t.logo) { const r = Math.min(W * 0.9 / t.logo.width, px(190) / t.logo.height); const lw = t.logo.width * r, lh = t.logo.height * r; x.drawImage(t.logo, (W - lw) / 2, y, lw, lh); y += lh + px(10); }
   x.font = `700 ${px(40)}px "Bricolage Grotesque", "IBM Plex Sans", sans-serif`;
-  for (const line of wrapLines(x, t.eventName, W - px(20), 3)) { y += px(44); x.fillText(line, W / 2, y); }
+  for (const line of wrapLines(x, t.eventName, W - px(20), 2)) { y += px(44); x.fillText(line, W / 2, y); }
   x.font = `500 ${px(25)}px "IBM Plex Sans", sans-serif`; y += px(38); x.fillText(t.dateLine, W / 2, y);
   y += px(24); dash(y);
   x.font = `700 ${px(28)}px "IBM Plex Sans", sans-serif`; y += px(46); x.fillText(t.zone.toUpperCase().split("").join(" "), W / 2, y);
@@ -1115,8 +1107,13 @@ function drawTicket(t, paperKey) {
   y += px(32); x.fillText("Bilhete individual, válido só para este lugar.", W / 2, y);
   y += px(26); x.fillText("Bilheteira Plebeus", W / 2, y);
   y += px(30);
-  const out = document.createElement("canvas"); out.width = W; out.height = Math.ceil(y);
-  out.getContext("2d").drawImage(c, 0, 0); return out;
+  const P = PAPERS[paperKey], OW = P.w * DPMM, OH = P.h * DPMM;
+  const out = document.createElement("canvas"); out.width = OW; out.height = OH;
+  const o = out.getContext("2d"); o.fillStyle = "#fff"; o.fillRect(0, 0, OW, OH);
+  const sc = Math.min(1, OH / y), dw = W * sc, dh = y * sc;
+  o.imageSmoothingEnabled = sc < 1;
+  o.drawImage(c, 0, 0, W, y, Math.round((OW - dw) / 2), 0, dw, dh);
+  return out;
 }
 async function openTickets(bids) {
   const ev = curEvent(); if (!ev) return;
@@ -1156,7 +1153,7 @@ function renderTickets() {
   }
   const n = tk.items.length;
   o.innerHTML = `<div class="card" role="dialog" aria-label="Bilhetes" style="width:min(720px,100%)">
-    <div class="card-head"><h3>${n ? n + " bilhete" + (n === 1 ? "" : "s") : "Bilhetes"}</h3><span class="small muted">Rolo de ${PAPERS[paperOf()].name} · altere em Editar evento</span></div>
+    <div class="card-head"><h3>${n ? n + " bilhete" + (n === 1 ? "" : "s") : "Bilhetes"}</h3><span class="small muted">Bilhete de ${PAPERS[paperOf()].w} × ${PAPERS[paperOf()].h} mm · rolo escolhido em Editar evento</span></div>
     ${body}
     <p class="small muted" style="margin:0">Imprime na impressora predefinida do computador. Se a Bilheteira foi aberta pelo atalho, imprime de imediato, sem janela de confirmação.</p>
     <div class="row-btns"><button class="btn primary" data-act="tk-print" type="button" ${n && !tk.loading ? "" : "disabled"}>Imprimir ${n} bilhete${n === 1 ? "" : "s"}</button><button class="btn ghost" data-act="tk-close" type="button">Fechar</button></div></div>`;
@@ -1164,17 +1161,29 @@ function renderTickets() {
 async function printTickets(btn) {
   const tk = S.tk; if (!tk || !tk.items.length) return;
   btn.disabled = true;
-  const P = PAPERS[paperOf()], area = $("printArea");
-  const canvases = tk.items.map(it => drawTicket(ticketData(it), paperOf()));
-  const hmm = Math.ceil(Math.max(...canvases.map(c => c.height)) / DPMM);
-  $("pageStyle").textContent = `@page{size:${P.w}mm ${hmm}mm;margin:0}`;
-  area.innerHTML = "";
-  for (const c of canvases) { const img = new Image(); img.style.width = P.print + "mm"; img.src = c.toDataURL("image/png"); area.appendChild(img); }
-  try { await Promise.all([...area.images || area.querySelectorAll("img")].map(i => i.decode ? i.decode().catch(() => {}) : null)); } catch (e) {}
-  window.print();
-  setTimeout(() => { area.innerHTML = ""; }, 1500);
+  const P = PAPERS[paperOf()];
+  const urls = tk.items.map(it => drawTicket(ticketData(it), paperOf()).toDataURL("image/png"));
+  const old = document.getElementById("printFrame"); if (old) old.remove();
+  const ifr = document.createElement("iframe"); ifr.id = "printFrame"; ifr.setAttribute("aria-hidden", "true");
+  ifr.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  document.body.appendChild(ifr);
+  const d = ifr.contentDocument;
+  d.open();
+  d.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bilhetes</title><style>
+@page{size:${P.w}mm ${P.h}mm;margin:0}
+html,body{margin:0;padding:0;background:#fff}
+img{display:block;width:${P.w}mm;height:${P.h - 0.5}mm;break-after:page;page-break-after:always}
+img:last-child{break-after:auto;page-break-after:auto}
+</style></head><body>${urls.map(u => `<img src="${u}" alt="">`).join("")}</body></html>`);
+  d.close();
+  try { await Promise.all([...d.images].map(i => i.decode ? i.decode().catch(() => {}) : null)); } catch (e) {}
+  const w = ifr.contentWindow;
+  const cleanup = () => setTimeout(() => ifr.remove(), 1000);
+  w.addEventListener("afterprint", cleanup, { once: true });
+  setTimeout(() => { if (ifr.isConnected) ifr.remove(); }, 120000);
+  w.focus(); w.print();
   btn.disabled = false;
-  toast(`${canvases.length} bilhete${canvases.length === 1 ? "" : "s"} enviado${canvases.length === 1 ? "" : "s"} para a impressora.`);
+  toast(`${urls.length} bilhete${urls.length === 1 ? "" : "s"} enviado${urls.length === 1 ? "" : "s"} para a impressora (${P.w} × ${P.h} mm).`);
 }
 
 /* ---------- Door validation ---------- */
