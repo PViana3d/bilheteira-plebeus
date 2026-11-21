@@ -1182,6 +1182,7 @@ document.addEventListener("click", async (e) => {
     case "scan-go": { const v = S.scanInput; S.scanInput = ""; validateCode(v); break; }
     case "fin-exp-pay": exportEventPayments(); break;
     case "fin-exp-sum": exportEventSummary(); break;
+    case "fin-pdf": eventPdf(btn); break;
     case "x-add": { const xf = S.expForm || {}; const c = parseEur(xf.amount); const desc = (xf.description || "").trim();
       if (!desc) { toast("Escreva a descrição da despesa."); return; }
       if (!isFinite(c) || c <= 0) { toast("Indique o valor da despesa."); return; }
@@ -1563,7 +1564,7 @@ function financePanel() {
       <tr class="tot"><td>Total</td><td class="num">${f.tickets}</td><td class="num">${eur(f.sold)}</td></tr></tbody></table></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Método</th><th class="num">Recebido (líquido)</th></tr></thead><tbody>
       ${Object.keys(METHODS).map(m => `<tr><td>${METHODS[m]}</td><td class="num">${eur(f.byMethod[m] || 0)}</td></tr>`).join("")}</tbody></table></div>
-    <div class="row-btns"><button class="btn sm" data-act="fin-exp-pay" type="button">Exportar pagamentos</button><button class="btn sm" data-act="fin-exp-sum" type="button">Exportar resumo</button></div></div>`;
+    <div class="row-btns"><button class="btn sm" data-act="fin-exp-pay" type="button">Exportar pagamentos</button><button class="btn sm" data-act="fin-exp-sum" type="button">Exportar resumo</button><button class="btn primary sm" data-act="fin-pdf" type="button">Relatório PDF</button></div></div>`;
   // expenses
   const xf = S.expForm || { description: "", category: EXP_CATS[0], amount: "", date: (f.ev && f.ev.date) || todayISO() };
   html += `<div class="card"><div class="card-head"><h3>Despesas</h3><b class="mono">${eur(f.expenses)}</b></div>
@@ -1579,6 +1580,122 @@ function financePanel() {
   html += `<div class="card"><div class="card-head"><h3>Pagamentos</h3><span class="small muted">${pays.length}</span></div>
     <div class="paylist">${pays.length ? pays.slice(0, 80).map(p => `<div><span class="mono muted">${dt(p.created_at)}</span><span>${esc(p.booking_name)} · ${METHODS[p.method]}${p.amount_cents < 0 ? " · reembolso" : ""}</span><span class="mono num ${p.amount_cents < 0 ? "neg" : ""}">${eur(p.amount_cents)}</span></div>`).join("") : `<div class="empty">Ainda não há pagamentos neste evento.</div>`}</div></div>`;
   return html;
+}
+/* ---------- Event report (PDF, A4) ---------- */
+const ORG = "União Académica de Avintes";
+const pdfText = (v) => String(v ?? "").replace(/[  ]/g, " ").replace(/−/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+async function eventPdf(btn) {
+  const f = eventFinance(), ev = f.ev; if (!ev) return;
+  const label = btn.textContent; btn.disabled = true; btn.textContent = "A gerar…";
+  try {
+    await loadScript(LIB.pdf);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
+    const W = 210, M = 16, CW = W - 2 * M, BOTTOM = 297 - 18;
+    const INK = [28, 25, 34], MUTED = [106, 100, 116], LINE = [220, 216, 226], ACC = [154, 29, 60], SOFT = [242, 241, 244];
+    const T = (str, x, yy, o) => doc.text(Array.isArray(str) ? str.map(pdfText) : pdfText(str), x, yy, o);
+    const font = (size, style, color) => { doc.setFont("helvetica", style || "normal"); doc.setFontSize(size); doc.setTextColor(...(color || INK)); };
+    let y = M;
+    const need = (h) => { if (y + h > BOTTOM) { doc.addPage(); y = M; } };
+
+    // Header
+    let tx = M;
+    if (S.logo) {
+      try { const img = await loadImage(S.logo); const r = Math.min(34 / img.width, 20 / img.height); const lw = img.width * r, lh = img.height * r;
+        doc.addImage(S.logo, S.logo.startsWith("data:image/jpeg") ? "JPEG" : "PNG", M, y, lw, lh); tx = M + lw + 6; } catch (e) {}
+    }
+    font(8, "bold", ACC); T(ORG.toUpperCase(), tx, y + 3, { charSpace: 0.4 });
+    font(18, "bold"); const titleLines = doc.splitTextToSize(pdfText(ev.name), W - M - tx - 40); T(titleLines.slice(0, 2), tx, y + 10);
+    font(10, "normal", MUTED); T(fmtDate(ev.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) + (ev.time ? " · " + ev.time : ""), tx, y + 10 + titleLines.slice(0, 2).length * 7);
+    font(9, "bold", INK); T("Relatório do evento", W - M, y + 3, { align: "right" });
+    font(8, "normal", MUTED); T("Gerado em " + dt(new Date().toISOString()), W - M, y + 8, { align: "right" });
+    y += Math.max(24, 12 + titleLines.slice(0, 2).length * 7 + 4);
+    doc.setDrawColor(...ACC); doc.setLineWidth(0.6); doc.line(M, y, W - M, y); y += 7;
+
+    // KPI boxes
+    const kpis = [["Vendido", eur(f.sold), f.tickets + " bilhetes"], ["Recebido", eur(f.net), f.refunded ? eur(f.refunded) + " devolvidos" : "líquido"], ["Por receber", eur(f.due), S.bookings.filter(b => bookingDue(b) > 0).length + " reservas"], ["Despesas", eur(f.expenses), S.expenses.length + " registos"], ["Saldo", eur(f.balance), "recebido - despesas"]];
+    const gap = 3, bw = (CW - gap * 4) / 5;
+    kpis.forEach((k, i) => { const x = M + i * (bw + gap); doc.setFillColor(...SOFT); doc.roundedRect(x, y, bw, 20, 1.5, 1.5, "F");
+      font(7, "bold", MUTED); T(k[0].toUpperCase(), x + 3, y + 5, { charSpace: 0.3 });
+      font(12, "bold", i === 4 ? (f.balance < 0 ? ACC : [46, 122, 77]) : i === 2 && f.due ? [180, 83, 26] : INK); T(k[1], x + 3, y + 12);
+      font(7, "normal", MUTED); T(k[2], x + 3, y + 17); });
+    y += 27;
+
+    // Occupancy
+    const blocked = blockedSet(), cap = S.layout.total - [...blocked].filter(id => S.layout.idx.has(id)).length;
+    const entered = S.bookings.reduce((a, b) => a + enteredCount(b), 0), pct = (n, d) => d ? Math.round(n / d * 100) + "%" : "0%";
+    const guests = Object.values(f.byType).filter(t => t.cat === "convidado").reduce((a, t) => a + t.n, 0);
+    font(11, "bold"); T("Ocupação", M, y); y += 5;
+    font(9, "normal", INK);
+    T(`Lotação ${cap} · Bilhetes ${f.tickets} (${pct(f.tickets, cap)}) · dos quais convidados ${guests} · Livres ${Math.max(0, cap - f.tickets)} · Entradas ${entered} (${pct(entered, f.tickets)} dos bilhetes)`, M, y);
+    y += 3; doc.setFillColor(...SOFT); doc.rect(M, y, CW, 2.5, "F");
+    if (cap) { doc.setFillColor(...ACC); doc.rect(M, y, CW * Math.min(1, f.tickets / cap), 2.5, "F"); doc.setFillColor(46, 122, 77); doc.rect(M, y, CW * Math.min(1, entered / cap), 2.5, "F"); }
+    y += 9;
+
+    // Result
+        font(11, "bold"); T("Resultado", M, y); y += 3;
+    doc.setFillColor(...SOFT); doc.roundedRect(M, y, CW, 22, 1.5, 1.5, "F");
+    const line = (l, v, yy, b) => { font(10, b ? "bold" : "normal", INK); T(l, M + 4, yy); T(v, W - M - 4, yy, { align: "right" }); };
+    line("Recebido (líquido de devoluções)", eur(f.net), y + 6);
+    line("Despesas", "- " + eur(f.expenses), y + 11.5);
+    doc.setDrawColor(...LINE); doc.line(M + 4, y + 13.5, W - M - 4, y + 13.5);
+    line("Saldo do evento", eur(f.balance), y + 19, true);
+    y += 26;
+    font(8, "normal", MUTED);
+    T(`Por receber: ${eur(f.due)} (não incluído no saldo). Valores em euros. Documento interno, sem valor fiscal.`, M, y);
+    y += 9;
+
+    // Table helper
+    function table(title, cols, rows, totalRow) {
+      need(20);
+      font(11, "bold"); T(title, M, y); y += 2.5;
+      const widths = cols.map(c => c.w * CW), xs = []; widths.reduce((a, w, i) => (xs[i] = a, a + w), M);
+      const head = () => { y += 4.5; font(7, "bold", MUTED); cols.forEach((c, i) => T(c.t.toUpperCase(), c.r ? xs[i] + widths[i] - 1 : xs[i] + 1, y, c.r ? { align: "right" } : { charSpace: 0.2 })); y += 1.8; doc.setDrawColor(...LINE); doc.setLineWidth(0.2); doc.line(M, y, W - M, y); };
+      head();
+      if (!rows.length) { y += 5; font(9, "italic", MUTED); T("Sem registos.", M + 1, y); y += 6; return; }
+      const drawRow = (r, bold) => {
+        font(9, bold ? "bold" : "normal", INK);
+        const cells = r.map((v, i) => cols[i].r ? [pdfText(v)] : doc.splitTextToSize(pdfText(v), widths[i] - 2));
+        const h = Math.max(...cells.map(c => c.length)) * 4 + 2;
+        if (y + h > BOTTOM) { doc.addPage(); y = M; font(11, "bold"); T(title + " (cont.)", M, y); y += 2.5; head(); font(9, bold ? "bold" : "normal", INK); }
+        y += 4.2; cells.forEach((c, i) => T(c, cols[i].r ? xs[i] + widths[i] - 1 : xs[i] + 1, y, { align: cols[i].r ? "right" : "left" }));
+        y += h - 4.2; if (!bold) { doc.setDrawColor(...LINE); doc.line(M, y, W - M, y); }
+      };
+      rows.forEach(r => drawRow(r, false));
+      if (totalRow) drawRow(totalRow, true);
+      y += 7;
+    }
+
+    const types = Object.values(f.byType);
+    table("Bilhetes por tipo", [{ t: "Bilhete", w: .46 }, { t: "Preço", w: .18, r: 1 }, { t: "Qt.", w: .14, r: 1 }, { t: "Valor", w: .22, r: 1 }],
+      types.map(t => { const z = S.layout.zones.find(z => z.name === t.zone || z.id === t.zone); const unit = t.cat === "convidado" ? 0 : ((ev.prices || {})[z ? z.id : ""] || {})[t.cat] || 0; return [`${t.zone} · ${CATS[t.cat]}`, eur(unit), t.n, eur(t.cents)]; }),
+      ["Total", "", f.tickets, eur(f.sold)]);
+
+    const pm = {}; Object.keys(METHODS).forEach(m => pm[m] = { n: 0, in: 0, out: 0 });
+    S.payments.forEach(p => { const k = pm[p.method]; if (!k) return; if (p.amount_cents > 0) { k.n++; k.in += p.amount_cents; } else k.out -= p.amount_cents; });
+    table("Recebido por método", [{ t: "Método", w: .34 }, { t: "Pagamentos", w: .16, r: 1 }, { t: "Recebido", w: .17, r: 1 }, { t: "Devolvido", w: .16, r: 1 }, { t: "Líquido", w: .17, r: 1 }],
+      Object.keys(METHODS).map(m => [METHODS[m], pm[m].n, eur(pm[m].in), eur(pm[m].out), eur(pm[m].in - pm[m].out)]),
+      ["Total", Object.values(pm).reduce((a, k) => a + k.n, 0), eur(f.received), eur(f.refunded), eur(f.net)]);
+
+    table("Despesas", [{ t: "Data", w: .14 }, { t: "Descrição", w: .46 }, { t: "Categoria", w: .22 }, { t: "Valor", w: .18, r: 1 }],
+      S.expenses.map(x => [fmtDate(x.date, { day: "2-digit", month: "2-digit", year: "numeric" }), x.description, x.category, eur(x.amount_cents)]),
+      S.expenses.length ? ["", "Total", "", eur(f.expenses)] : null);
+
+    const dueRows = S.bookings.filter(b => bookingDue(b) > 0).sort((a, b) => a.name.localeCompare(b.name, "pt"));
+    table("Reservas por pagar", [{ t: "Nome", w: .30 }, { t: "Lugares", w: .30 }, { t: "Total", w: .13, r: 1 }, { t: "Pago", w: .13, r: 1 }, { t: "Em falta", w: .14, r: 1 }],
+      dueRows.map(b => [b.name + (b.contact ? "\n" + b.contact : ""), formatSeats(b.seats || []), eur(bookingTotal(b)), eur(bookingPaid(b)), eur(bookingDue(b))]),
+      dueRows.length ? ["Total", "", "", "", eur(f.due)] : null);
+
+    // Footer on every page
+    const pages = doc.getNumberOfPages(), who = S.me ? S.me.email : "";
+    for (let i = 1; i <= pages; i++) {
+      doc.setPage(i); doc.setDrawColor(...LINE); doc.setLineWidth(0.2); doc.line(M, 297 - 12, W - M, 297 - 12);
+      font(7.5, "normal", MUTED); T(`Bilheteira ${ORG} · ${ev.name}`, M, 297 - 8); T(`${who ? who + " · " : ""}Página ${i} de ${pages}`, W - M, 297 - 8, { align: "right" });
+    }
+    doc.save(`relatorio-${slugify(ev.name)}-${ev.date}.pdf`);
+    toast("Relatório PDF guardado na pasta de transferências.");
+  } catch (e) { toast(e && e.message === "load" ? "Não foi possível carregar o gerador de PDF. Verifique a ligação e tente de novo." : "Não foi possível gerar o relatório."); console.error(e); }
+  if (btn.isConnected) { btn.disabled = false; btn.textContent = label; }
 }
 function exportEventPayments() {
   const ev = curEvent(); if (!ev) return;
