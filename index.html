@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Bilheteira Plebeus</title>
+<title>Bilheteira União Académica de Avintes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -245,7 +245,7 @@ body.role-user #mapCard{display:none}
 <body>
 
 <header class="top">
-  <h1>Bilheteira <span>Plebeus</span></h1>
+  <h1>Bilheteira <span>União Académica de Avintes</span></h1>
   <span class="sub">Reservas e lugares do auditório</span>
   <span class="spacer"></span>
   <div class="whobar" id="who"></div>
@@ -1327,7 +1327,7 @@ function drawTicket(t, paperKey) {
   y += px(22); dash(y);
   x.font = `400 ${px(19)}px "IBM Plex Sans", sans-serif`;
   y += px(32); x.fillText("Bilhete individual. Não serve de fatura.", W / 2, y);
-  y += px(26); x.fillText("Bilheteira Plebeus", W / 2, y);
+  y += px(26); x.fillText("Bilheteira União Académica de Avintes", W / 2, y);
   y += px(30);
   const P = PAPERS[paperKey], OW = P.w * DPMM, OH = P.h * DPMM;
   const out = document.createElement("canvas"); out.width = OW; out.height = OH;
@@ -1740,7 +1740,7 @@ const G = { mode: "in", msg: "", busy: false };
 function gate(html) { $("gateCard").innerHTML = html; $("gate").hidden = false; }
 function renderLogin() {
   const up = G.mode === "up";
-  gate(`<h2>Bilheteira <span>Plebeus</span></h2>
+  gate(`<h2>Bilheteira <span>União Académica de Avintes</span></h2>
     <p class="muted" style="margin:0">${up ? "Crie a sua conta. Depois de confirmar o email, o responsável tem de a autorizar na lista da equipa." : "Entre com a conta da equipa."}</p>
     <form id="loginForm" class="panel" style="gap:10px">
       <div class="field"><label for="lg-email">Email</label><input id="lg-email" type="email" autocomplete="username" required></div>

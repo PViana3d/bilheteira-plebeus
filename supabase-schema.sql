@@ -1,4 +1,4 @@
--- Bilheteira Plebeus: data model for the standalone box-office app.
+-- Bilheteira União Académica de Avintes: data model for the standalone box-office app.
 -- Staff allowlist gates everything through RLS; seat rows double as tickets.
 
 create table public.staff (

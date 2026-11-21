@@ -1,4 +1,4 @@
-# Bilheteira Plebeus
+# Bilheteira União Académica de Avintes
 
 Gestão de reservas, lugares, bilhetes e entradas do auditório.
 

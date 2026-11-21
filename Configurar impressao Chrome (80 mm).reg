@@ -1,6 +1,6 @@
 Windows Registry Editor Version 5.00
 
-; Bilheteira Plebeus - impressao de bilhetes (rolo de 80 mm)
+; Bilheteira Uniao Academica de Avintes - impressao de bilhetes (rolo de 80 mm)
 ; Desliga cabecalhos e rodapes na impressao do Chrome e define o papel predefinido para o tamanho do bilhete.
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]
