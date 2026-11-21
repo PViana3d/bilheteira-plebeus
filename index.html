@@ -136,8 +136,8 @@ h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:
 
 /* Panel */
 .panel{display:flex;flex-direction:column;gap:12px;min-width:0}
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
-.tabs button{border:0;background:transparent;padding:8px 12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs button{border:0;background:transparent;padding:8px 10px;white-space:nowrap;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
 .tabs button.on{color:var(--ink);border-bottom-color:var(--velvet)}
 .tabs .count{font-family:var(--f-mono);font-size:11px;background:var(--sunk);padding:1px 6px;border-radius:9px;margin-left:4px}
 .chips{display:flex;flex-wrap:wrap;gap:4px}
@@ -182,12 +182,12 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0;width:100%}
 .log div{display:grid;grid-template-columns:44px 14px minmax(0,1fr);gap:6px;padding:4px 0;border-bottom:1px solid var(--line)}
 .log div:last-child{border-bottom:0}
 .dot{width:8px;height:8px;border-radius:50%;margin-top:5px}
-.dot.ok{background:var(--ok)} .dot.used{background:var(--warn)} .dot.bad{background:var(--velvet)}
+.dot.ok{background:var(--ok)} .dot.used{background:var(--warn)} .dot.bad{background:var(--velvet)} .dot.due{background:var(--warn)}
 
 /* standalone extras */
 body{margin:0}
 .top .spacer{flex:1}
-.who{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.whobar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:30}
 .gate[hidden]{display:none}
 .gate .card{width:min(400px,100%)}
@@ -199,6 +199,46 @@ body{margin:0}
 .role-pill.admin{background:var(--velvet);color:var(--velvet-ink)}
 body.role-user #mapCard{display:none}
 @media (min-width:1150px){ body.role-user .app{grid-template-columns:230px minmax(0,1fr) minmax(0,1.2fr)} }
+.price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:4px}
+@media (min-width:700px){ .price-grid{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.moneybox{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:8px;background:var(--sunk)}
+.moneybox .total{font:700 20px var(--f-display);font-variant-numeric:tabular-nums}
+.seatcats{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow:auto}
+.seatcat{display:grid;grid-template-columns:minmax(0,1fr) auto 72px;gap:8px;align-items:center;font-size:13px}
+.seatcat select,.payform select{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 6px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.neg{color:var(--velvet)} .pos{color:var(--ok)}
+.sums{display:flex;gap:14px;flex-wrap:wrap}
+.sums div{display:flex;flex-direction:column}
+.sums span,.kpis span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.sums b{font:700 17px var(--f-display);font-variant-numeric:tabular-nums}
+.is-due b{color:var(--warn)} .is-over b{color:var(--acc)} .is-neg b{color:var(--velvet)} .is-pos b{color:var(--ok)}
+.paylist{display:flex;flex-direction:column;font-size:12px}
+.paylist>div{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+.paylist>div:last-child{border-bottom:0}
+.payform{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:8px}
+.warn{color:var(--warn)}
+.linkbtn{background:none;border:0;padding:0;color:var(--acc);text-decoration:underline;font:inherit;cursor:pointer}
+.pchip{display:inline-block;margin-left:6px;font-size:11px;font-weight:600;padding:1px 7px;border-radius:9px;font-family:var(--f-body)}
+.pchip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.pchip.due{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.pchip.free{background:var(--sunk);color:var(--muted)}
+.bk .who .pchip{font-family:var(--f-body);font-size:11px;margin-left:6px}
+.bk .who .pchip.ok{color:var(--ok)} .bk .who .pchip.due{color:var(--warn)} .bk .who .pchip.free{color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.kpis div{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;background:var(--sunk);min-width:0}
+.kpis b{font:700 18px var(--f-display);font-variant-numeric:tabular-nums}
+.kpis small{font-size:11px;color:var(--muted)}
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:6px 8px;border-bottom:1px solid var(--line)}
+.tbl th.num{text-align:right}
+.tbl tr.tot td{font-weight:700;border-bottom:0}
+.xrow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.xrow strong{display:block}
+.cash-on{background:color-mix(in srgb,var(--ok) 16%,transparent)!important;color:var(--ok)!important}
+.verdict.due{background:color-mix(in srgb,var(--warn) 16%,transparent)} .verdict.due .ic{background:var(--warn)}
 .staff-row select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px}
 </style>
 </head>
@@ -208,7 +248,7 @@ body.role-user #mapCard{display:none}
   <h1>Bilheteira <span>Plebeus</span></h1>
   <span class="sub">Reservas e lugares do auditório</span>
   <span class="spacer"></span>
-  <div class="who" id="who"></div>
+  <div class="whobar" id="who"></div>
 </header>
 <div class="banner" id="banner" hidden></div>
 
@@ -249,6 +289,8 @@ body.role-user #mapCard{display:none}
 <div class="overlay" id="ticketOverlay" hidden></div>
 <div class="toast" id="toast" hidden></div>
 <div class="overlay" id="staffOverlay" hidden></div>
+<div class="overlay" id="cashOverlay" hidden></div>
+<div class="overlay" id="repOverlay" hidden></div>
 <div class="gate" id="gate"><div class="card" id="gateCard"><p class="muted" style="margin:0">A abrir…</p></div></div>
 
 
@@ -275,6 +317,13 @@ const ALPH = "ABCDEFGHJKLMNPQRSTUVWX23456789";
 function evPrefix(id) { let h = 2166136261 >>> 0; for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } let s = ""; for (let i = 0; i < 4; i++) { s += ALPH[h % ALPH.length]; h = Math.floor(h / ALPH.length); } return s; }
 function randCode(n) { const a = new Uint32Array(n); crypto.getRandomValues(a); return Array.from(a, x => ALPH[x % ALPH.length]).join(""); }
 function makeCode(evId, seatId) { const p = seatId.split("-"); return evPrefix(evId) + p[0] + p[1] + pad(p[2]) + randCode(4); }
+const CATS = { socio: "Sócio", nao_socio: "Não sócio", convidado: "Convidado" };
+const METHODS = { dinheiro: "Dinheiro", mbway: "MB Way", multibanco: "Multibanco/cartão", transferencia: "Transferência" };
+const EXP_CATS = ["Artistas/cachets", "Aluguer", "Técnica", "Divulgação", "Bar/consumíveis", "Transportes", "Outros"];
+const eur = (c) => ((c || 0) / 100).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
+const eurIn = (c) => ((c || 0) / 100).toFixed(2).replace(".", ",");
+function parseEur(v) { const n = parseFloat(String(v || "").replace(/\s|€/g, "").replace(",", ".")); return isFinite(n) ? Math.round(n * 100) : NaN; }
+function priceOf(ev, seatId, cat) { if (cat === "convidado" || !ev || !ev.prices) return 0; const z = seatId.split("-")[0]; return Math.max(0, +((ev.prices[z] || {})[cat]) || 0); }
 const prettyCode = (c) => c.length > 8 ? `${c.slice(0, 4)} ${c.slice(4, -4)} ${c.slice(-4)}` : c;
 const seatIn = (b, id) => !!(b && ((b.entered && b.entered[id]) || (b.checkedIn && !b.entered)));
 const enteredCount = (b) => (b.seats || []).filter(id => seatIn(b, id)).length;
@@ -427,30 +476,49 @@ function supaErr(error) {
   const m = (error && error.message) || "";
   const e = new Error(m); e.raw = error;
   if (m.startsWith("conflict:")) { e.code = "conflict"; e.seats = m.slice(9).split(",").filter(Boolean); }
+  else if (m === "no_session") e.code = "no_session";
+  else if (m === "already_open") e.code = "already_open";
+  else if (m.startsWith("refund_too_big:")) { e.code = "refund_too_big"; e.paid = +m.split(":")[1] || 0; }
+  else if (error && error.code === "23503") e.code = "has_money";
   else if (error && error.code === "23505") { e.code = "conflict"; e.seats = []; }
   else if (error && (error.code === "42501" || /row-level security/i.test(m))) e.code = "denied";
   else e.code = "unavailable";
   return e;
 }
 function makeSupaStore(sb) {
-  const L = { venue: [], events: [], logo: [], book: [] };
+  const L = { venue: [], events: [], logo: [], book: [], fin: [], cash: [] };
+  async function fetchFin(l) {
+    const [p, x] = await Promise.all([
+      sb.from("payments").select("id,booking_id,booking_name,amount_cents,method,kind,note,created_by,created_at,session_id").eq("event_id", l.eid).order("created_at"),
+      sb.from("expenses").select("id,description,category,amount_cents,date,created_by,created_at").eq("event_id", l.eid).order("date")
+    ]);
+    if (!p.error && !x.error) l.cb({ payments: p.data, expenses: x.data });
+  }
+  async function fetchCash(c) {
+    const me = (await sb.auth.getUser()).data.user; const email = ((me && me.email) || "").toLowerCase();
+    const r = await sb.from("cash_sessions").select("id,opened_by,opened_at,opening_cents").eq("opened_by", email).is("closed_at", null).maybeSingle();
+    if (r.error) return;
+    if (!r.data) { c({ open: null, payments: [] }); return; }
+    const p = await sb.from("payments").select("id,event_id,booking_name,amount_cents,method,kind,created_at").eq("session_id", r.data.id).order("created_at");
+    c({ open: r.data, payments: p.error ? [] : p.data });
+  }
   const timers = {};
   const soon = (k, fn) => { clearTimeout(timers[k]); timers[k] = setTimeout(fn, 150); };
   const ok = (r) => { if (r.error) throw supaErr(r.error); return r.data; };
   async function fetchVenue() { const r = await sb.from("venue").select("zones,types").eq("id", 1).maybeSingle(); if (!r.error) L.venue.forEach(f => f(r.data)); }
   async function fetchEvents() {
-    const r = await sb.from("events").select("id,name,date,time,notes,paper,blocked,created_at").order("date");
+    const r = await sb.from("events").select("id,name,date,time,notes,paper,blocked,prices,created_at").order("date");
     if (!r.error) L.events.forEach(f => f(r.data.map(e => ({ ...e, blocked: e.blocked || [], createdAt: e.created_at }))));
   }
   async function fetchLogo(l) { const r = await sb.from("events").select("logo").eq("id", l.eid).maybeSingle(); if (!r.error) l.cb(r.data ? r.data.logo : null); }
   async function fetchBookings(l) {
     const [b, st] = await Promise.all([
-      sb.from("bookings").select("id,name,contact,notes,created_at").eq("event_id", l.eid),
-      sb.from("seats").select("seat_id,booking_id,code,entered_at").eq("event_id", l.eid)
+      sb.from("bookings").select("id,name,contact,notes,created_at").eq("event_id", l.eid).is("cancelled_at", null),
+      sb.from("seats").select("seat_id,booking_id,code,entered_at,category,price_cents").eq("event_id", l.eid)
     ]);
     if (b.error || st.error) { l.err && l.err(supaErr(b.error || st.error)); return; }
-    const map = new Map(b.data.map(x => [x.id, { id: x.id, name: x.name, contact: x.contact, notes: x.notes, createdAt: x.created_at, seats: [], tickets: [], entered: {}, checkedIn: false, checkedAt: null }]));
-    st.data.forEach(r => { const k = map.get(r.booking_id); if (!k) return; k.seats.push(r.seat_id); k.tickets.push({ s: r.seat_id, c: r.code }); if (r.entered_at) { k.entered[r.seat_id] = r.entered_at; if (!k.checkedAt || r.entered_at > k.checkedAt) k.checkedAt = r.entered_at; } });
+    const map = new Map(b.data.map(x => [x.id, { id: x.id, name: x.name, contact: x.contact, notes: x.notes, createdAt: x.created_at, seats: [], tickets: [], entered: {}, cats: {}, prices: {}, checkedIn: false, checkedAt: null }]));
+    st.data.forEach(r => { const k = map.get(r.booking_id); if (!k) return; k.seats.push(r.seat_id); k.cats[r.seat_id] = r.category; k.prices[r.seat_id] = r.price_cents; k.tickets.push({ s: r.seat_id, c: r.code }); if (r.entered_at) { k.entered[r.seat_id] = r.entered_at; if (!k.checkedAt || r.entered_at > k.checkedAt) k.checkedAt = r.entered_at; } });
     map.forEach(k => { k.checkedIn = k.seats.length > 0 && k.seats.every(id => k.entered[id]); });
     l.cb([...map.values()]);
   }
@@ -459,9 +527,12 @@ function makeSupaStore(sb) {
     .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => { soon("e", fetchEvents); L.logo.forEach(l => soon("l" + l.eid, () => fetchLogo(l))); })
     .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => L.book.forEach(l => soon("b" + l.eid, () => fetchBookings(l))))
     .on("postgres_changes", { event: "*", schema: "public", table: "seats" }, () => L.book.forEach(l => soon("b" + l.eid, () => fetchBookings(l))))
+    .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => { L.fin.forEach(l => soon("f" + l.eid, () => fetchFin(l))); L.cash.forEach(c => soon("c", () => fetchCash(c))); })
+    .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, () => L.fin.forEach(l => soon("f" + l.eid, () => fetchFin(l))))
+    .on("postgres_changes", { event: "*", schema: "public", table: "cash_sessions" }, () => L.cash.forEach(c => soon("c", () => fetchCash(c))))
     .subscribe();
   /* safety net if the realtime connection drops */
-  setInterval(() => { if (document.visibilityState === "visible") { fetchEvents(); L.book.forEach(l => fetchBookings(l)); } }, 60000);
+  setInterval(() => { if (document.visibilityState === "visible") { fetchEvents(); L.book.forEach(l => fetchBookings(l)); L.fin.forEach(l => fetchFin(l)); L.cash.forEach(c => fetchCash(c)); } }, 60000);
   const refreshBookings = (eid) => L.book.filter(l => l.eid === eid).forEach(l => fetchBookings(l));
   const sub = (arr, item, kick) => { arr.push(item); kick(); return () => { const i = arr.indexOf(item); if (i >= 0) arr.splice(i, 1); }; };
   return {
@@ -469,24 +540,39 @@ function makeSupaStore(sb) {
     onVenue: (cb) => sub(L.venue, cb, fetchVenue),
     saveVenue: async (v) => { ok(await sb.from("venue").upsert({ id: 1, zones: v.zones, types: v.types || {}, updated_at: new Date().toISOString() })); },
     onEvents: (cb) => sub(L.events, cb, fetchEvents),
-    addEvent: async (d) => { const r = ok(await sb.from("events").insert({ name: d.name, date: d.date, time: d.time || "", notes: d.notes || "", paper: d.paper || "80", blocked: d.blocked || [] }).select("id").single()); fetchEvents(); return r.id; },
-    updateEvent: async (id, p) => { const q = {}; ["name", "date", "time", "notes", "paper", "blocked"].forEach(k => { if (k in p) q[k] = p[k]; }); ok(await sb.from("events").update(q).eq("id", id)); fetchEvents(); },
+    addEvent: async (d) => { const r = ok(await sb.from("events").insert({ name: d.name, date: d.date, time: d.time || "", notes: d.notes || "", paper: d.paper || "80", blocked: d.blocked || [], ...(d.prices ? { prices: d.prices } : {}) }).select("id").single()); fetchEvents(); return r.id; },
+    updateEvent: async (id, p) => { const q = {}; ["name", "date", "time", "notes", "paper", "blocked", "prices"].forEach(k => { if (k in p) q[k] = p[k]; }); ok(await sb.from("events").update(q).eq("id", id)); fetchEvents(); },
     deleteEvent: async (id) => { ok(await sb.from("events").delete().eq("id", id)); fetchEvents(); },
     onLogo: (eid, cb) => { const l = { eid, cb }; return sub(L.logo, l, () => fetchLogo(l)); },
     setLogo: async (eid, data) => { ok(await sb.from("events").update({ logo: data || null }).eq("id", eid)); },
     onBookings: (eid, cb, err) => { const l = { eid, cb, err }; return sub(L.book, l, () => fetchBookings(l)); },
     addBooking: async (eid, d) => {
-      const id = ok(await sb.rpc("create_booking", { p_event: eid, p_name: d.name, p_contact: d.contact || "", p_notes: d.notes || "", p_seats: d.seats, p_codes: d.seats.map(x => makeCode(eid, x)) }));
+      const id = ok(await sb.rpc("create_booking", { p_event: eid, p_name: d.name, p_contact: d.contact || "", p_notes: d.notes || "", p_seats: d.seats, p_codes: d.seats.map(x => makeCode(eid, x)), p_categories: d.seats.map(x => (d.cats && d.cats[x]) || "nao_socio") }));
       refreshBookings(eid); return id;
     },
     updateBooking: async (eid, bid, p) => {
-      if (p.seats) ok(await sb.rpc("set_booking_seats", { p_booking: bid, p_seats: p.seats, p_codes: p.seats.map(x => makeCode(eid, x)) }));
+      if (p.seats) ok(await sb.rpc("set_booking_seats", { p_booking: bid, p_seats: p.seats, p_codes: p.seats.map(x => makeCode(eid, x)), p_categories: p.seats.map(x => (p.cats && p.cats[x]) || "nao_socio") }));
       if ("checkedIn" in p) ok(await sb.rpc("checkin_booking", { p_booking: bid, p_in: !!p.checkedIn }));
       const q = {}; ["name", "contact", "notes"].forEach(k => { if (k in p) q[k] = p[k]; });
       if (Object.keys(q).length) ok(await sb.from("bookings").update(q).eq("id", bid));
       refreshBookings(eid);
     },
-    deleteBooking: async (eid, bid) => { ok(await sb.from("bookings").delete().eq("id", bid)); refreshBookings(eid); },
+    deleteBooking: async (eid, bid, refundMethod) => { ok(await sb.rpc("cancel_booking", { p_booking: bid, p_refund_method: refundMethod || null })); refreshBookings(eid); },
+    finance: {
+      onEvent: (eid, cb) => { const l = { eid, cb }; return sub(L.fin, l, () => fetchFin(l)); },
+      onCash: (cb) => sub(L.cash, cb, () => fetchCash(cb)),
+      refresh: () => { L.fin.forEach(l => fetchFin(l)); L.cash.forEach(c => fetchCash(c)); },
+      pay: async (bid, cents, method, note) => { ok(await sb.rpc("record_payment", { p_booking: bid, p_amount_cents: cents, p_method: method, p_note: note || "" })); L.fin.forEach(l => fetchFin(l)); L.cash.forEach(c => fetchCash(c)); },
+      addExpense: async (eid, d) => { ok(await sb.from("expenses").insert({ event_id: eid, description: d.description, category: d.category, amount_cents: d.amount_cents, date: d.date })); L.fin.forEach(l => fetchFin(l)); },
+      deleteExpense: async (id) => { ok(await sb.from("expenses").delete().eq("id", id)); L.fin.forEach(l => fetchFin(l)); },
+      openCash: async (cents) => { ok(await sb.rpc("open_cash", { p_opening_cents: cents })); L.cash.forEach(c => fetchCash(c)); },
+      closeCash: async (cents, notes) => { const r = ok(await sb.rpc("close_cash", { p_counted_cents: cents, p_notes: notes || "" })); L.cash.forEach(c => fetchCash(c)); return r; },
+      sessions: async () => ok(await sb.from("cash_sessions").select("id,opened_by,opened_at,opening_cents,closed_at,expected_cents,counted_cents,notes").not("closed_at", "is", null).order("closed_at", { ascending: false }).limit(60)),
+      sessionPayments: async (ids) => ids.length ? ok(await sb.from("payments").select("session_id,method,amount_cents").in("session_id", ids)) : [],
+      summary: async (from, to) => ok(await sb.rpc("finance_summary", { p_from: from, p_to: to })),
+      periodPayments: async (ids) => ids.length ? ok(await sb.from("payments").select("event_id,booking_name,amount_cents,method,kind,note,created_by,created_at").in("event_id", ids).order("created_at")) : [],
+      periodExpenses: async (ids) => ids.length ? ok(await sb.from("expenses").select("event_id,description,category,amount_cents,date,created_by").in("event_id", ids).order("date")) : []
+    },
     validate: async (eid, code) => { const r = ok(await sb.rpc("validate_ticket", { p_event: eid, p_code: code })); refreshBookings(eid); return r; }
   };
 }
@@ -507,10 +593,11 @@ const S = {
   events: [], eventId: null, bookings: [], seatOwner: new Map(),
   selection: new Set(), mode: "book", brush: "acc", focus: null, reassign: null,
   tab: "book", search: "", filter: "all",
-  form: { name: "", contact: "", notes: "" }, edit: null,
+  form: { name: "", contact: "", notes: "", cats: {}, catAll: "nao_socio", payMethod: "" }, edit: null,
   auto: { n: 2, zone: "any", type: "normal" },
   newEvent: null, editEvent: null, confirm: null, unsubB: null, pendingBlocked: {}, pendingVenue: null,
-  unsubL: null, logo: null, ticketIndex: new Map(), scanInput: "", scan: null, scanLog: [], tk: null
+  unsubL: null, logo: null, ticketIndex: new Map(),
+  payments: [], expenses: [], unsubF: null, cash: { open: null, payments: [] }, payForm: null, expForm: null, refundMethod: "dinheiro", scanInput: "", scan: null, scanLog: [], tk: null
 };
 try { const last = localStorage.getItem("bp-event"); if (last) S.eventId = last; } catch (e) {}
 
@@ -518,12 +605,28 @@ const curEvent = () => S.events.find(e => e.id === S.eventId) || null;
 const blockedSet = () => new Set((curEvent() && curEvent().blocked) || []);
 const canWrite = () => !S.readOnly && S.ready;
 const isUser = () => !!(S.me && !S.me.admin);
+const canFinance = () => !!(S.store && S.store.finance && S.me && S.me.admin);
+const bookingTotal = (b) => (b.seats || []).reduce((a, id) => a + ((b.prices && b.prices[id]) || 0), 0);
+const bookingPaid = (b) => S.payments.reduce((a, p) => a + (p.booking_id === b.id ? p.amount_cents : 0), 0);
+const bookingDue = (b) => bookingTotal(b) - bookingPaid(b);
+const lastMethod = (b) => { const ps = S.payments.filter(p => p.booking_id === b.id && p.amount_cents > 0); return ps.length ? ps[ps.length - 1].method : null; };
+function payChip(b) {
+  if (!canFinance()) return "";
+  const t = bookingTotal(b), d = bookingDue(b);
+  if (t === 0 && bookingPaid(b) === 0) return `<span class="pchip free">${Object.values(b.cats || {}).every(c => c === "convidado") && (b.seats || []).length ? "Convite" : "0 €"}</span>`;
+  if (d <= 0) return `<span class="pchip ok">${d < 0 ? "Devolver " + eur(-d) : "Pago"}</span>`;
+  return `<span class="pchip due">Falta ${eur(d)}</span>`;
+}
 const canScan = () => S.ready && (canWrite() || isUser());
 
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3800); }
 function errMsg(e) {
   if (e && e.code === "conflict") return `Estes lugares acabaram de ser reservados por outra pessoa: ${formatSeats(e.seats)}. Escolha outros.`;
   if (e && e.code === "busy") return "Outra pessoa está a gravar uma reserva neste momento. Tente de novo dentro de segundos.";
+  if (e && e.code === "no_session") return "Abra a caixa (botão Caixa, no topo) antes de registar pagamentos ou reembolsos.";
+  if (e && e.code === "already_open") return "Já tem uma caixa aberta.";
+  if (e && e.code === "refund_too_big") return `Não pode devolver mais do que foi pago (${eur(e.paid)}).`;
+  if (e && e.code === "has_money") return "Este evento tem pagamentos ou despesas registados e não pode ser apagado.";
   if (e && e.code === "quota_exceeded") return "A base de dados está cheia. Apague eventos antigos para libertar espaço.";
   if (e && (e.code === "invalid_argument" || e.code === "denied")) return "A sua conta não tem permissão para esta alteração.";
   return "Não foi possível guardar. Verifique a ligação e tente de novo.";
@@ -563,7 +666,15 @@ function eventForm(p, v) {
     <div class="grid2"><div class="field"><label for="${p}-date">Data</label><input type="date" id="${p}-date" data-f="${p}.date" value="${esc(v.date)}"></div>
     <div class="field"><label for="${p}-time">Hora</label><input type="time" id="${p}-time" data-f="${p}.time" value="${esc(v.time)}"></div></div>
     <div class="grid2"><div class="field"><label for="${p}-notes">Notas</label><input id="${p}-notes" data-f="${p}.notes" value="${esc(v.notes)}" placeholder="Opcional"></div>
-    <div class="field"><label for="${p}-paper">Rolo dos bilhetes</label><select id="${p}-paper" data-f="${p}.paper">${Object.entries(PAPERS).map(([k, o]) => `<option value="${k}" ${String(v.paper || "80") === k ? "selected" : ""}>${o.name}</option>`).join("")}</select></div></div>`;
+    <div class="field"><label for="${p}-paper">Rolo dos bilhetes</label><select id="${p}-paper" data-f="${p}.paper">${Object.entries(PAPERS).map(([k, o]) => `<option value="${k}" ${String(v.paper || "80") === k ? "selected" : ""}>${o.name}</option>`).join("")}</select></div></div>
+    <div class="field"><span class="label">Preços dos bilhetes (€) · Convidado é sempre gratuito</span>
+    <div class="price-grid">${S.layout.zones.map(z => ["socio", "nao_socio"].map(c => `<div class="field"><label for="${p}-pr-${z.id}-${c}">${esc(z.name)} (${CATS[c].toLowerCase()})</label><input id="${p}-pr-${z.id}-${c}" inputmode="decimal" data-f="${p}.pr_${z.id}_${c}" value="${esc(v["pr_" + z.id + "_" + c] ?? "")}" placeholder="0,00"></div>`).join("")).join("")}</div></div>`;
+}
+function pricesToForm(prices) { const o = {}; S.layout.zones.forEach(z => ["socio", "nao_socio"].forEach(c => { const v = prices && prices[z.id] && prices[z.id][c]; o["pr_" + z.id + "_" + c] = v ? eurIn(v) : ""; })); return o; }
+function formToPrices(f) {
+  const out = {};
+  for (const z of S.layout.zones) { out[z.id] = {}; for (const c of ["socio", "nao_socio"]) { const raw = f["pr_" + z.id + "_" + c]; const v = raw === "" || raw == null ? 0 : parseEur(raw); if (!isFinite(v) || v < 0) throw new Error(`Preço inválido em ${z.name} (${CATS[c].toLowerCase()}).`); out[z.id][c] = v; } }
+  return out;
 }
 
 /* ---------- Header ---------- */
@@ -713,12 +824,12 @@ function suggest(n, zonePref, type) {
 function renderTabs() {
   const t = (k, label, count) => `<button type="button" class="${S.tab === k ? "on" : ""}" data-tab="${k}">${label}${count != null ? `<span class="count">${count}</span>` : ""}</button>`;
   if (isUser()) { S.tab = "scan"; $("tabs").innerHTML = t("scan", "Entradas"); return; }
-  $("tabs").innerHTML = t("book", "Reservar") + t("list", "Reservas", S.bookings.length) + t("scan", "Entradas");
+  $("tabs").innerHTML = t("book", "Reservar") + t("list", "Reservas", S.bookings.length) + t("scan", "Entradas") + (canFinance() ? t("fin", "Finanças") : "");
 }
 function renderPanel() {
   const body = $("panelBody"), ev = curEvent();
   if (!ev) { body.innerHTML = `<div class="card"><p class="muted" style="margin:0">Selecione um evento à esquerda para reservar lugares e registar entradas.</p></div>`; return; }
-  body.innerHTML = (isUser() || S.tab === "scan") ? scanPanel() : S.tab === "list" ? listPanel() : bookPanel();
+  body.innerHTML = (isUser() || S.tab === "scan") ? scanPanel() : S.tab === "list" ? listPanel() : (S.tab === "fin" && canFinance()) ? financePanel() : bookPanel();
   if (isUser() && !document.querySelector(".overlay:not([hidden])")) { const i = $("scan-input"); if (i && document.activeElement !== i && !(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) i.focus({ preventScroll: true }); }
 }
 function bookPanel() {
@@ -738,6 +849,7 @@ function bookPanel() {
     html += `<div class="card"><div class="card-head"><h3>Reserva</h3>
         <span class="status ${nIn ? "in" : "out"}">${stTxt}</span></div>
       <div class="small mono">${esc(formatSeats(fb.seats || []))} · ${(fb.seats || []).length} lugar${(fb.seats || []).length === 1 ? "" : "es"}</div>
+      ${canFinance() ? bookingMoney(fb) : ""}
       ${canWrite() ? `
       <div class="field"><label for="ed-name">Nome</label><input id="ed-name" data-f="edit.name" value="${esc(e.name)}"></div>
       <div class="field"><label for="ed-contact">Contacto</label><input id="ed-contact" data-f="edit.contact" value="${esc(e.contact)}"></div>
@@ -750,7 +862,7 @@ function bookPanel() {
         <button class="btn ghost sm" data-act="bk-cancel" type="button">Cancelar reserva</button>
         <button class="btn ghost sm" data-act="focus-close" type="button">Fechar</button>
       </div>
-      ${conf ? `<div class="confirm"><p>Cancelar a reserva de <b>${esc(fb.name)}</b> e libertar ${(fb.seats || []).length} lugares?</p><button class="btn danger sm" data-act="bk-cancel-yes" type="button">Cancelar reserva</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div>` : ""}`
+      ${conf ? cancelConfirm(fb) : ""}`
       : `<p style="margin:0"><b>${esc(fb.name)}</b><br><span class="muted">${esc(fb.contact || "")}</span></p>${fb.notes ? `<p class="small" style="margin:0">${esc(fb.notes)}</p>` : ""}<div class="row-btns"><button class="btn ghost sm" data-act="focus-close" type="button">Fechar</button></div>`}
     </div>`;
     return html;
@@ -766,7 +878,8 @@ function bookPanel() {
       <div class="field"><label for="nb-name">Nome</label><input id="nb-name" data-f="form.name" value="${esc(S.form.name)}" placeholder="Nome de quem reserva" autocomplete="off"></div>
       <div class="field"><label for="nb-contact">Contacto</label><input id="nb-contact" data-f="form.contact" value="${esc(S.form.contact)}" placeholder="Telefone ou email" autocomplete="off"></div>
       <div class="field"><label for="nb-notes">Notas</label><textarea id="nb-notes" data-f="form.notes" placeholder="Opcional">${esc(S.form.notes)}</textarea></div>
-      <div class="row-btns"><button class="btn primary" data-act="bk-create" type="button">Reservar ${sel.length} lugar${sel.length === 1 ? "" : "es"}</button></div>`;
+      ${newBookingMoney(sel)}
+      <div class="row-btns"><button class="btn primary" data-act="bk-create" type="button">Reservar ${sel.length} lugar${sel.length === 1 ? "" : "es"}${canFinance() && S.form.payMethod && selTotal(sel) > 0 ? " e receber " + eur(selTotal(sel)) : ""}</button></div>`;
   html += `</div>`;
   const a = S.auto;
   html += `<div class="card"><div class="card-head"><h3>Sugestão automática</h3></div>
@@ -779,6 +892,46 @@ function bookPanel() {
     <div class="row-btns"><button class="btn sm" data-act="auto" type="button">Sugerir lugares</button></div></div>`;
   return html;
 }
+const catSel = (attr, id, cur) => `<select ${attr}="${esc(id)}" aria-label="Tipo de bilhete">${Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${cur === k ? "selected" : ""}>${v}</option>`).join("")}</select>`;
+const selCat = (id) => S.form.cats[id] || S.form.catAll;
+const selTotal = (sel) => sel.reduce((a, id) => a + priceOf(curEvent(), id, selCat(id)), 0);
+function cancelConfirm(fb) {
+  const paid = canFinance() ? bookingPaid(fb) : 0, n = (fb.seats || []).length;
+  if (paid <= 0) return `<div class="confirm"><p>Cancelar a reserva de <b>${esc(fb.name)}</b> e libertar ${n} lugar${n === 1 ? "" : "es"}?</p><button class="btn danger sm" data-act="bk-cancel-yes" type="button">Cancelar reserva</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div>`;
+  return `<div class="confirm" style="flex-direction:column;align-items:stretch"><p>Cancelar a reserva de <b>${esc(fb.name)}</b> e libertar ${n} lugar${n === 1 ? "" : "es"}? Foram pagos <b>${eur(paid)}</b>.</p>
+    <div class="row-btns"><label class="small" for="cx-method">Devolver em</label><select id="cx-method" data-f="refundMethod">${Object.entries(METHODS).map(([k, v]) => `<option value="${k}" ${S.refundMethod === k ? "selected" : ""}>${v}</option>`).join("")}</select></div>
+    ${S.cash.open ? "" : `<p class="small warn" style="margin:0">Para devolver o dinheiro tem de <button class="linkbtn" data-act="cash-open-ui" type="button">abrir a caixa</button>.</p>`}
+    <div class="row-btns"><button class="btn danger sm" data-act="bk-cancel-refund" type="button" ${S.cash.open ? "" : "disabled"}>Cancelar e devolver ${eur(paid)}</button><button class="btn sm" data-act="bk-cancel-yes" type="button">Cancelar sem devolver</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div></div>`;
+}
+function newBookingMoney(sel) {
+  const ev = curEvent();
+  const rows = sel.length > 1 ? `<div class="seatcats">${sel.slice().sort((a, b) => firstPos({ seats: [a] }) - firstPos({ seats: [b] })).map(id => `<div class="seatcat"><span class="mono">${esc(seatName(id))}</span>${catSel("data-cat", id, selCat(id))}<span class="mono num">${eur(priceOf(ev, id, selCat(id)))}</span></div>`).join("")}</div>` : "";
+  let html = `<div class="moneybox"><div class="grid2"><div class="field"><label for="nb-catall">Tipo de bilhete${sel.length > 1 ? " (todos)" : ""}</label>${catSel("id", "nb-catall", S.form.catAll).replace('id="nb-catall"', 'id="nb-catall" data-f="form.catAll"')}</div>
+    <div class="field"><span class="label">Total</span><b class="total">${eur(selTotal(sel))}</b></div></div>${rows}`;
+  if (canFinance() && selTotal(sel) > 0) {
+    html += `<div class="field"><label for="nb-pay">Pagamento</label><select id="nb-pay" data-f="form.payMethod"><option value="">Por pagar (paga mais tarde)</option>${Object.entries(METHODS).map(([k, v]) => `<option value="${k}" ${S.form.payMethod === k ? "selected" : ""}>Pago agora · ${v}</option>`).join("")}</select></div>`;
+    if (S.form.payMethod && !S.cash.open) html += `<p class="small warn" style="margin:0">A sua caixa está fechada. <button class="linkbtn" data-act="cash-open-ui" type="button">Abrir caixa</button> para registar o pagamento.</p>`;
+  }
+  return html + `</div>`;
+}
+function bookingMoney(fb) {
+  const ev = curEvent(), total = bookingTotal(fb), paid = bookingPaid(fb), due = total - paid;
+  const pays = S.payments.filter(p => p.booking_id === fb.id);
+  const seatsSorted = (fb.seats || []).slice().sort((a, b) => firstPos({ seats: [a] }) - firstPos({ seats: [b] }));
+  let html = `<div class="moneybox"><div class="seatcats">${seatsSorted.map(id => `<div class="seatcat"><span class="mono">${esc(seatName(id))}</span>${catSel("data-bcat", id, (fb.cats || {})[id] || "nao_socio")}<span class="mono num">${eur((fb.prices || {})[id] || 0)}</span></div>`).join("")}</div>
+    <div class="sums"><div><span>Total</span><b>${eur(total)}</b></div><div><span>Pago</span><b>${eur(paid)}</b></div><div class="${due > 0 ? "is-due" : due < 0 ? "is-over" : ""}"><span>${due < 0 ? "A devolver" : "Em falta"}</span><b>${eur(Math.abs(due))}</b></div></div>`;
+  if (pays.length) html += `<div class="paylist">${pays.map(p => `<div><span class="mono muted">${new Date(p.created_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" })} ${hhmm(p.created_at)}</span><span>${p.amount_cents < 0 ? "Reembolso" : "Pagamento"} · ${METHODS[p.method]}</span><span class="mono num ${p.amount_cents < 0 ? "neg" : ""}">${eur(p.amount_cents)}</span></div>`).join("")}</div>`;
+  const pf = S.payForm && S.payForm.bid === fb.id ? S.payForm : null;
+  if (pf) {
+    html += `<div class="payform"><div class="grid2"><div class="field"><label for="pf-amount">${pf.mode === "refund" ? "Valor a devolver (€)" : "Valor recebido (€)"}</label><input id="pf-amount" inputmode="decimal" data-f="payForm.amount" value="${esc(pf.amount)}"></div>
+      <div class="field"><label for="pf-method">Método</label><select id="pf-method" data-f="payForm.method">${Object.entries(METHODS).map(([k, v]) => `<option value="${k}" ${pf.method === k ? "selected" : ""}>${v}</option>`).join("")}</select></div></div>
+      ${S.cash.open ? "" : `<p class="small warn" style="margin:0">A sua caixa está fechada. <button class="linkbtn" data-act="cash-open-ui" type="button">Abrir caixa</button> primeiro.</p>`}
+      <div class="row-btns"><button class="btn primary sm" data-act="pf-save" type="button" ${S.cash.open ? "" : "disabled"}>${pf.mode === "refund" ? "Registar reembolso" : "Registar pagamento"}</button><button class="btn ghost sm" data-act="pf-cancel" type="button">Cancelar</button></div></div>`;
+  } else {
+    html += `<div class="row-btns">${due > 0 ? `<button class="btn primary sm" data-act="pf-open" data-pmode="pay" type="button">Receber ${eur(due)}</button>` : ""}${paid > 0 ? `<button class="btn ghost sm" data-act="pf-open" data-pmode="refund" type="button">Reembolsar</button>` : ""}</div>`;
+  }
+  return html + `</div>`;
+}
 function listPanel() {
   const q = S.search.trim().toLowerCase();
   const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -787,17 +940,18 @@ function listPanel() {
   const allIn = (b) => enteredCount(b) === (b.seats || []).length;
   if (S.filter === "out") rows = rows.filter(b => !allIn(b));
   if (S.filter === "in") rows = rows.filter(b => enteredCount(b) > 0);
+  if (S.filter === "due") rows = rows.filter(b => bookingDue(b) > 0);
   if (nq) rows = rows.filter(b => norm(b.name).includes(nq) || norm(b.contact).includes(nq) || norm(formatSeats(b.seats || [])).includes(nq) || (b.seats || []).some(id => { const s = S.layout.idx.get(id); const k = nq.replace(/[\s-]/g, ""); return !!k && !!s && (norm(s.row + pad(s.n)) === k || norm(s.row + s.n) === k); }));
   const nIn = S.bookings.filter(b => enteredCount(b) > 0).length, nOut = S.bookings.filter(b => !allIn(b)).length;
   const f = (k, t) => `<button type="button" class="${S.filter === k ? "on" : ""}" data-filter="${k}">${t}</button>`;
   let html = `<div class="card">
     <div class="field"><label for="search">Procurar por nome, contacto ou lugar</label><input id="search" type="search" data-f="search" value="${esc(S.search)}" placeholder="Ex.: Silva ou F-12" autocomplete="off"></div>
-    <div class="row-btns"><div class="seg">${f("all", "Todas")}${f("out", "Por entrar " + nOut)}${f("in", "Entraram " + nIn)}</div></div>
+    <div class="row-btns"><div class="seg">${f("all", "Todas")}${f("out", "Por entrar " + nOut)}${f("in", "Entraram " + nIn)}${canFinance() ? f("due", "Por pagar " + S.bookings.filter(b => bookingDue(b) > 0).length) : ""}</div></div>
     <div class="list">`;
   if (!rows.length) html += `<div class="empty">${S.bookings.length ? "Nenhuma reserva corresponde à pesquisa." : "Ainda não há reservas neste evento."}</div>`;
   rows.forEach(b => {
     const k = enteredCount(b), n = (b.seats || []).length, done = k === n;
-    html += `<div class="bk ${done ? "in" : ""}"><button type="button" class="who" data-focus="${esc(b.id)}"><strong>${esc(b.name)}</strong><span>${esc(formatSeats(b.seats || []))} · ${(b.seats || []).length}</span></button>
+    html += `<div class="bk ${done ? "in" : ""}"><button type="button" class="who" data-focus="${esc(b.id)}"><strong>${esc(b.name)}</strong><span>${esc(formatSeats(b.seats || []))} · ${(b.seats || []).length}</span>${payChip(b)}</button>
       ${canWrite() ? `<span class="row-btns">${k && !done ? `<span class="status in">${k}/${n}</span>` : ""}<button type="button" class="btn sm ${done ? "" : "primary"}" data-act="checkin" data-id="${esc(b.id)}">${done ? "Anular" : "Entrou"}</button></span>` : `<span class="status ${k ? "in" : "out"}">${done ? "Entrou" : k ? k + "/" + n : "Por entrar"}</span>`}</div>`;
   });
   html += `</div></div>
@@ -817,6 +971,10 @@ function setField(path, value) {
   if (a === "edit") { const fb = S.bookings.find(x => x.id === S.focus); if (!S.edit && fb) S.edit = { name: fb.name, contact: fb.contact || "", notes: fb.notes || "" }; }
   if (a === "ne") { S.newEvent[b] = value; return; }
   if (a === "ee") { S.editEvent[b] = value; return; }
+  if (a === "payForm") { if (S.payForm) S.payForm[b] = value; return; }
+  if (a === "expForm") { S.expForm = S.expForm || {}; S.expForm[b] = value; return; }
+  if (a === "cashForm") { S.cashForm = S.cashForm || {}; S.cashForm[b] = value; return; }
+  if (a === "rep") { S.rep[b] = value; return; }
   if (a === "auto" && b === "n") value = Math.max(1, Math.min(60, parseInt(value, 10) || 1));
   S[a][b] = value;
 }
@@ -824,10 +982,19 @@ document.addEventListener("input", (e) => {
   const f = e.target.dataset && e.target.dataset.f; if (!f) return;
   setField(f, e.target.value);
   if (f === "search") keepFocus(renderPanel);
+  if (f === "cashForm.counted") keepFocus(() => renderCash(false));
   if (f.startsWith("edit.") && !document.querySelector('[data-act="ed-save"]')) keepFocus(renderPanel);
 });
 document.addEventListener("change", async (e) => {
   const f = e.target.dataset && e.target.dataset.f; if (f && e.target.tagName === "SELECT") setField(f, e.target.value);
+  if (f === "form.catAll") { S.form.cats = {}; keepFocus(renderPanel); }
+  if (f === "form.payMethod") keepFocus(renderPanel);
+  if (e.target.dataset && e.target.dataset.cat) { S.form.cats[e.target.dataset.cat] = e.target.value; keepFocus(renderPanel); }
+  if (e.target.dataset && e.target.dataset.bcat) {
+    const ev = curEvent(), b = S.bookings.find(x => x.id === S.focus); if (!ev || !b) return;
+    const cats = { ...(b.cats || {}) }; cats[e.target.dataset.bcat] = e.target.value;
+    await run(() => S.store.updateBooking(ev.id, b.id, { seats: b.seats, cats }), `${seatName(e.target.dataset.bcat)} passou a ${CATS[e.target.value]}.`);
+  }
   if (e.target.id === "ee-logo" && e.target.files[0]) {
     const ev = curEvent(); if (!ev) return;
     try { const data = await processLogo(e.target.files[0]); await S.store.setLogo(ev.id, data); S.logo = data; renderHeader(); toast("Logotipo guardado."); }
@@ -852,6 +1019,9 @@ function selectEvent(id) {
   S.bookings = []; S.seatOwner = new Map();
   if (S.unsubB) { S.unsubB(); S.unsubB = null; }
   if (S.unsubL) { S.unsubL(); S.unsubL = null; }
+  if (S.unsubF) { S.unsubF(); S.unsubF = null; }
+  S.payments = []; S.expenses = []; S.payForm = null; S.expForm = null;
+  if (id && canFinance()) S.unsubF = S.store.finance.onEvent(id, (d) => { S.payments = d.payments; S.expenses = d.expenses; keepFocus(() => { renderTabs(); renderPanel(); }); });
   S.logo = null; S.scan = null; S.scanLog = [];
   if (id && S.store) S.unsubL = S.store.onLogo(id, (d) => { S.logo = d; renderHeader(); }, () => {});
   if (id && S.store) S.unsubB = S.store.onBookings(id, (list) => {
@@ -928,14 +1098,16 @@ document.addEventListener("click", async (e) => {
     case "ne-save": {
       const d = S.newEvent; if (!d.name.trim() || !d.date) { toast("Indique o nome e a data do evento."); return; }
       btn.disabled = true;
-      try { const id = await S.store.addEvent({ name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80", blocked: [], createdAt: new Date().toISOString() }); S.newEvent = null; selectEvent(id); toast("Evento criado."); }
+      let prices; try { prices = formToPrices(d); } catch (er) { btn.disabled = false; toast(er.message); return; }
+      try { const id = await S.store.addEvent({ name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80", prices, blocked: [], createdAt: new Date().toISOString() }); S.newEvent = null; selectEvent(id); toast("Evento criado."); }
       catch (err) { btn.disabled = false; toast(errMsg(err)); }
       break; }
-    case "ee-open": S.editEvent = { name: ev.name, date: ev.date, time: ev.time || "", notes: ev.notes || "", paper: ev.paper || "80" }; renderHeader(); break;
+    case "ee-open": S.editEvent = { name: ev.name, date: ev.date, time: ev.time || "", notes: ev.notes || "", paper: ev.paper || "80", ...pricesToForm(ev.prices) }; renderHeader(); break;
     case "ee-cancel": S.editEvent = null; renderHeader(); break;
     case "ee-save": {
       const d = S.editEvent; if (!d.name.trim() || !d.date) { toast("Indique o nome e a data do evento."); return; }
-      await run(() => S.store.updateEvent(ev.id, { name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80" }), "Evento atualizado.");
+      let prices; try { prices = formToPrices(d); } catch (er) { toast(er.message); return; }
+      await run(() => S.store.updateEvent(ev.id, { name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80", prices }), "Evento atualizado. Os novos preços aplicam-se às próximas reservas.");
       S.editEvent = null; renderAll(); break; }
     case "ev-del": S.confirm = "del-event"; renderHeader(); break;
     case "ev-del-yes": { const id = ev.id; S.confirm = null; btn.disabled = true;
@@ -956,8 +1128,14 @@ document.addEventListener("click", async (e) => {
       const name = S.form.name.trim(); if (!name) { toast("Indique o nome de quem reserva."); $("nb-name") && $("nb-name").focus(); return; }
       const seats = [...S.selection]; const eid = ev.id; btn.disabled = true;
       try {
-        const newId = await S.store.addBooking(eid, { name, contact: S.form.contact.trim(), notes: S.form.notes.trim(), seats, checkedIn: false, checkedAt: null, createdAt: new Date().toISOString() });
-        S.selection.clear(); S.form = { name: "", contact: "", notes: "" }; if (newId) { S.focus = newId; S.edit = null; } toast(`Reserva criada: ${name} · ${seats.length} lugar${seats.length === 1 ? "" : "es"}`); renderAll();
+        const cats = {}; seats.forEach(id => cats[id] = selCat(id));
+        const total = selTotal(seats), payMethod = canFinance() && total > 0 ? S.form.payMethod : "";
+        if (payMethod && !S.cash.open) { btn.disabled = false; toast("Abra a caixa antes de registar o pagamento, ou escolha “Por pagar”."); return; }
+        const newId = await S.store.addBooking(eid, { name, contact: S.form.contact.trim(), notes: S.form.notes.trim(), seats, cats, checkedIn: false, checkedAt: null, createdAt: new Date().toISOString() });
+        let paidMsg = "";
+        if (payMethod && newId) { try { await S.store.finance.pay(newId, total, payMethod, ""); paidMsg = ` · pago ${eur(total)} (${METHODS[payMethod]})`; } catch (pe) { paidMsg = " · pagamento NÃO registado: " + errMsg(pe); } }
+        const keepCat = S.form.catAll;
+        S.selection.clear(); S.form = { name: "", contact: "", notes: "", cats: {}, catAll: keepCat, payMethod: "" }; if (newId) { S.focus = newId; S.edit = null; } toast(`Reserva criada: ${name} · ${seats.length} lugar${seats.length === 1 ? "" : "es"}${paidMsg}`); renderAll();
       } catch (err) { if (err.code === "conflict") err.seats.forEach(x => S.selection.delete(x)); toast(errMsg(err)); renderAll(); }
       break; }
     case "checkin": {
@@ -972,13 +1150,27 @@ document.addEventListener("click", async (e) => {
       S.edit = null; renderPanel(); break; }
     case "focus-close": S.focus = null; S.edit = null; S.confirm = null; renderAll(); break;
     case "bk-cancel": S.confirm = "cancel:" + S.focus; renderPanel(); break;
-    case "bk-cancel-yes": { const id = S.focus, b = S.bookings.find(x => x.id === id); S.confirm = null;
-      await run(() => S.store.deleteBooking(ev.id, id), `Reserva cancelada${b ? ": " + b.name : ""}.`); S.focus = null; renderAll(); break; }
+    case "bk-cancel-yes": case "bk-cancel-refund": { const id = S.focus, b = S.bookings.find(x => x.id === id); S.confirm = null; btn.disabled = true;
+      const rm = act === "bk-cancel-refund" ? S.refundMethod : null;
+      try { await S.store.deleteBooking(ev.id, id, rm); toast(`Reserva cancelada${b ? ": " + b.name : ""}${rm ? " · devolvidos " + eur(bookingPaid(b)) + " (" + METHODS[rm] + ")" : ""}.`); S.focus = null; }
+      catch (err) { toast(errMsg(err)); }
+      renderAll(); break; }
+    case "pf-open": { const b = S.bookings.find(x => x.id === S.focus); if (!b) return; const mode = btn.dataset.pmode;
+      const amt = mode === "refund" ? Math.min(bookingPaid(b), bookingDue(b) < 0 ? -bookingDue(b) : bookingPaid(b)) : bookingDue(b);
+      S.payForm = { bid: b.id, mode, amount: eurIn(amt), method: mode === "refund" ? (lastMethod(b) || "dinheiro") : "dinheiro" }; renderPanel(); const i = $("pf-amount"); i && i.select(); break; }
+    case "pf-cancel": S.payForm = null; renderPanel(); break;
+    case "pf-save": { const pf = S.payForm; if (!pf) return; const c = parseEur(pf.amount);
+      if (!isFinite(c) || c <= 0) { toast("Indique um valor maior que zero."); return; }
+      btn.disabled = true;
+      try { await S.store.finance.pay(pf.bid, pf.mode === "refund" ? -c : c, pf.method, ""); toast(`${pf.mode === "refund" ? "Reembolso" : "Pagamento"} registado: ${eur(c)} (${METHODS[pf.method]}).`); S.payForm = null; }
+      catch (err) { btn.disabled = false; toast(errMsg(err)); }
+      renderPanel(); break; }
     case "re-open": { const b = S.bookings.find(x => x.id === S.focus); S.reassign = { id: b.id, name: b.name, seats: new Set(b.seats || []) }; S.mode = "book"; S.selection.clear(); renderAll(); break; }
     case "re-cancel": S.reassign = null; renderAll(); break;
     case "re-save": { const r = S.reassign; btn.disabled = true;
       try { const b0 = S.bookings.find(x => x.id === r.id) || {}; const seatsNew = [...r.seats];
-        await S.store.updateBooking(ev.id, r.id, { seats: seatsNew, tickets: (b0.tickets || []).filter(t => r.seats.has(t.s)) }); S.reassign = null;
+        const dflt = Object.values(b0.cats || {})[0] || "nao_socio", cats = {}; seatsNew.forEach(id => cats[id] = (b0.cats || {})[id] || dflt);
+        await S.store.updateBooking(ev.id, r.id, { seats: seatsNew, cats, tickets: (b0.tickets || []).filter(t => r.seats.has(t.s)) }); S.reassign = null;
         toast((b0.tickets || []).some(t => !r.seats.has(t.s)) || seatsNew.some(id => !(b0.tickets || []).some(t => t.s === id)) && (b0.tickets || []).length ? "Lugares atualizados. Imprima os bilhetes dos lugares novos; os dos lugares retirados deixaram de ser válidos." : "Lugares atualizados."); }
       catch (err) { if (err.code === "conflict") err.seats.forEach(x => r.seats.delete(x)); toast(errMsg(err)); }
       renderAll(); break; }
@@ -988,13 +1180,42 @@ document.addEventListener("click", async (e) => {
     case "tk-print": printTickets(btn); break;
     case "logo-del": await run(() => S.store.setLogo(ev.id, null), "Logotipo removido."); renderHeader(); break;
     case "scan-go": { const v = S.scanInput; S.scanInput = ""; validateCode(v); break; }
+    case "fin-exp-pay": exportEventPayments(); break;
+    case "fin-exp-sum": exportEventSummary(); break;
+    case "x-add": { const xf = S.expForm || {}; const c = parseEur(xf.amount); const desc = (xf.description || "").trim();
+      if (!desc) { toast("Escreva a descrição da despesa."); return; }
+      if (!isFinite(c) || c <= 0) { toast("Indique o valor da despesa."); return; }
+      btn.disabled = true;
+      await run(() => S.store.finance.addExpense(ev.id, { description: desc, category: xf.category || EXP_CATS[0], amount_cents: c, date: xf.date || ev.date }), `Despesa registada: ${eur(c)}.`);
+      S.expForm = null; renderPanel(); break; }
+    case "x-del": S.confirm = "xdel:" + btn.dataset.id; renderPanel(); break;
+    case "x-del-yes": { S.confirm = null; await run(() => S.store.finance.deleteExpense(btn.dataset.id), "Despesa apagada."); renderPanel(); break; }
+    case "cash-open-ui": S.cashResult = null; renderCash(); break;
+    case "cash-x": $("cashOverlay").hidden = true; S.cashResult = null; break;
+    case "cash-ack": S.cashResult = null; S.cashForm = null; renderCash(); break;
+    case "cash-exp": exportCash(); break;
+    case "cash-open": { const c = S.cashForm.opening === "" ? 0 : parseEur(S.cashForm.opening);
+      if (!isFinite(c) || c < 0) { toast("Indique o fundo de caixa (pode ser 0)."); return; }
+      btn.disabled = true;
+      try { await S.store.finance.openCash(c); S.cashForm = null; toast("Caixa aberta."); $("cashOverlay").hidden = true; } catch (err) { btn.disabled = false; toast(errMsg(err)); }
+      break; }
+    case "cash-close": { const c = parseEur(S.cashForm.counted);
+      if (!isFinite(c) || c < 0 || S.cashForm.counted === "") { toast("Conte o dinheiro da gaveta e indique o valor."); $("cash-counted") && $("cash-counted").focus(); return; }
+      btn.disabled = true;
+      try { S.cashResult = await S.store.finance.closeCash(c, S.cashForm.notes); S.cashForm = null; } catch (err) { btn.disabled = false; toast(errMsg(err)); }
+      renderCash(); break; }
+    case "rep-open": renderReport(); break;
+    case "rep-go": renderReport(); break;
+    case "rep-x": $("repOverlay").hidden = true; break;
+    case "rep-exp": exportReport("sum"); break;
+    case "rep-exp-mov": exportReport("mov"); break;
     case "exp-list": exportCsv("list"); break;
     case "exp-seats": exportCsv("seats"); break;
     case "venue-cancel": $("venueOverlay").hidden = true; break;
     case "venue-save": saveVenue(); break;
   }
 });
-$("newEventBtn").addEventListener("click", () => { S.newEvent = { name: "", date: todayISO(), time: "21:00", notes: "", paper: "80" }; renderEvents(); const n = $("ne-name"); n && n.focus(); });
+$("newEventBtn").addEventListener("click", () => { const last = S.events[S.events.length - 1]; S.newEvent = { name: "", date: todayISO(), time: "21:00", notes: "", paper: (last && last.paper) || "80", ...pricesToForm(last && last.prices) }; renderEvents(); const n = $("ne-name"); n && n.focus(); });
 
 /* ---------- Venue plan editor ---------- */
 function openVenue() {
@@ -1096,6 +1317,7 @@ function drawTicket(t, paperKey) {
   y += px(26); dash(y);
   x.font = `400 ${px(23)}px "IBM Plex Sans", sans-serif`;
   for (const line of wrapLines(x, "Reserva: " + t.holder, W - px(20), 2)) { y += px(34); x.fillText(line, W / 2, y); }
+  if (t.priceLine) { x.font = `700 ${px(24)}px "IBM Plex Sans", sans-serif`; for (const line of wrapLines(x, t.priceLine, W - px(20), 2)) { y += px(34); x.fillText(line, W / 2, y); } }
   y += px(22);
   const probe = document.createElement("canvas"); JsBarcode(probe, t.code, { format: "CODE128", displayValue: false, margin: 0, width: 1, height: 10 });
   const mod = Math.max(1, Math.floor(W / (probe.width + 22)));
@@ -1104,7 +1326,7 @@ function drawTicket(t, paperKey) {
   x.font = `500 ${px(27)}px "IBM Plex Mono", monospace`; y += px(36); x.fillText(prettyCode(t.code), W / 2, y);
   y += px(22); dash(y);
   x.font = `400 ${px(19)}px "IBM Plex Sans", sans-serif`;
-  y += px(32); x.fillText("Bilhete individual, válido só para este lugar.", W / 2, y);
+  y += px(32); x.fillText("Bilhete individual. Não serve de fatura.", W / 2, y);
   y += px(26); x.fillText("Bilheteira Plebeus", W / 2, y);
   y += px(30);
   const P = PAPERS[paperKey], OW = P.w * DPMM, OH = P.h * DPMM;
@@ -1127,7 +1349,7 @@ async function openTickets(bids) {
     for (const bid of bids) {
       const b = S.bookings.find(x => x.id === bid); if (!b) continue;
       const tickets = await ensureTickets(ev, b);
-      tickets.forEach(tk => { const s = S.layout.idx.get(tk.s); if (s) items.push({ seat: s, code: tk.c, holder: b.name }); });
+      tickets.forEach(tk => { const s = S.layout.idx.get(tk.s); if (s) items.push({ seat: s, code: tk.c, holder: b.name, bid: b.id }); });
     }
     if (!S.tk) return;
     S.tk.items = items; S.tk.loading = false;
@@ -1138,7 +1360,15 @@ async function openTickets(bids) {
 function ticketData(it) {
   const ev = curEvent();
   return { logo: S.tk.logoImg, eventName: ev.name, dateLine: fmtDate(ev.date, { weekday: "short", day: "numeric", month: "long", year: "numeric" }) + (ev.time ? " · " + ev.time : ""),
-    zone: it.seat.zoneName, row: it.seat.row, n: it.seat.n, type: seatType(it.seat.id), holder: it.holder, code: it.code };
+    zone: it.seat.zoneName, row: it.seat.row, n: it.seat.n, type: seatType(it.seat.id), holder: it.holder, code: it.code, priceLine: ticketPriceLine(it) };
+}
+function ticketPriceLine(it) {
+  const b = S.bookings.find(x => x.id === it.bid); if (!b) return "";
+  const cat = (b.cats || {})[it.seat.id] || "nao_socio", price = (b.prices || {})[it.seat.id] || 0;
+  if (cat === "convidado") return "Convidado · Oferta";
+  let st = "";
+  if (canFinance()) { const d = bookingDue(b), m = lastMethod(b); st = d <= 0 && price > 0 ? ` · Pago${m ? " (" + METHODS[m] + ")" : ""}` : d > 0 ? " · A pagar na entrada" : ""; }
+  return `${CATS[cat]} · ${eur(price)}${st}`;
 }
 function renderTickets() {
   const o = $("ticketOverlay"), tk = S.tk; if (!tk) return;
@@ -1205,13 +1435,14 @@ async function validateCode(raw) {
   if (S.store.validate) {
     let r = null;
     try { r = await S.store.validate(ev.id, code); } catch (e) { res = { kind: "bad", title: "Não foi possível registar", detail: errMsg(e) }; }
-    if (r && r.status === "ok") res = { kind: "ok", title: `Entrada válida · ${seatName(r.seat_id)}`, detail: `${r.name}${r.left ? ` · faltam ${r.left} da mesma reserva` : ""}${seatType(r.seat_id) !== "normal" ? " · " + TYPE_NAMES[seatType(r.seat_id)] : ""}` };
+    if (r && r.status === "ok" && r.due_cents > 0) res = { kind: "due", icon: "€", title: `Entrada válida · ${seatName(r.seat_id)} · falta pagar ${eur(r.due_cents)}`, detail: `${r.name} · a reserva tem ${eur(r.due_cents)} por pagar${isUser() ? " (chame um Admin para receber)" : ""}${r.left ? ` · faltam entrar ${r.left}` : ""}` };
+    else if (r && r.status === "ok") res = { kind: "ok", title: `Entrada válida · ${seatName(r.seat_id)}`, detail: `${r.name}${r.category ? " · " + CATS[r.category] : ""}${r.left ? ` · faltam ${r.left} da mesma reserva` : ""}${seatType(r.seat_id) !== "normal" ? " · " + TYPE_NAMES[seatType(r.seat_id)] : ""}` };
     else if (r && r.status === "used") res = { kind: "used", title: "Bilhete já utilizado", detail: `${seatName(r.seat_id)} · ${r.name} · entrou às ${hhmm(r.entered_at)}` };
     else if (r && r.status === "other") res = { kind: "bad", title: "Bilhete de outro evento", detail: `${r.event_name} · ${fmtDate(r.event_date, { day: "numeric", month: "long" })}${r.event_time ? " · " + r.event_time : ""}` };
     else if (r) res = code.slice(0, 4) === evPrefix(ev.id) ? { kind: "bad", title: "Bilhete anulado", detail: "Este bilhete foi emitido para este evento, mas a reserva foi cancelada ou o lugar foi alterado." } : { kind: "bad", title: "Bilhete inválido", detail: `O código ${prettyCode(code)} não corresponde a nenhum bilhete.` };
     res.code = code; res.at = new Date().toISOString();
     S.scan = res; S.scanLog = [res, ...S.scanLog].slice(0, 15);
-    beep(res.kind === "ok"); renderPanel();
+    beep(res.kind === "ok" || res.kind === "due"); renderPanel();
     const inp0 = $("scan-input"); if (inp0) inp0.focus({ preventScroll: true });
     return;
   }
@@ -1243,7 +1474,7 @@ function scanPanel() {
   const r = S.scan, icon = { ok: "✓", used: "!", bad: "✕" };
   let verdict = "";
   if (r && r.kind === "wait") verdict = `<p class="muted" style="margin:0">A ler a fotografia…</p>`;
-  else if (r) verdict = `<div class="verdict ${r.kind}" role="status"><span class="ic" aria-hidden="true">${icon[r.kind]}</span><b>${esc(r.title)}</b><span>${esc(r.detail)}</span></div>`;
+  else if (r) verdict = `<div class="verdict ${r.kind}" role="status"><span class="ic" aria-hidden="true">${r.icon || icon[r.kind]}</span><b>${esc(r.title)}</b><span>${esc(r.detail)}</span></div>`;
   const log = S.scanLog.map(l => `<div><span class="mono muted">${hhmm(l.at)}</span><span class="dot ${l.kind}"></span><span>${esc(l.title)}${l.detail ? " · " + esc(l.detail) : ""}</span></div>`).join("");
   return `<div class="card">
     <div class="card-head"><h3>Validar entradas</h3><span class="mono small">${inn} / ${total}</span></div>
@@ -1292,19 +1523,184 @@ async function decodePhoto(file) {
 
 /* ---------- Export ---------- */
 function csvCell(v) { const s = String(v ?? ""); return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function saveCsv(filename, rows) {
+  const csv = "﻿" + rows.map(r => r.map(csvCell).join(";")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000); toast("Ficheiro guardado na pasta de transferências.");
+}
+const slugify = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+const money = (c) => eurIn(c);
+const dt = (iso) => iso ? new Date(iso).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+
+/* ---------- Event finances ---------- */
+function eventFinance() {
+  const ev = curEvent(), byType = {}, byMethod = {};
+  let sold = 0, due = 0, tickets = 0;
+  S.layout.zones.forEach(z => Object.keys(CATS).forEach(c => byType[z.id + "|" + c] = { zone: z.name, cat: c, n: 0, cents: 0 }));
+  S.bookings.forEach(b => {
+    (b.seats || []).forEach(id => { const z = id.split("-")[0], c = (b.cats || {})[id] || "nao_socio", k = byType[z + "|" + c] || (byType[z + "|" + c] = { zone: z, cat: c, n: 0, cents: 0 }); k.n++; k.cents += (b.prices || {})[id] || 0; sold += (b.prices || {})[id] || 0; tickets++; });
+    const d = bookingDue(b); if (d > 0) due += d;
+  });
+  let received = 0, refunded = 0;
+  S.payments.forEach(p => { if (p.amount_cents > 0) received += p.amount_cents; else refunded -= p.amount_cents; byMethod[p.method] = (byMethod[p.method] || 0) + p.amount_cents; });
+  const expenses = S.expenses.reduce((a, x) => a + x.amount_cents, 0);
+  return { ev, byType, byMethod, sold, due, tickets, received, refunded, net: received - refunded, expenses, balance: received - refunded - expenses };
+}
+function financePanel() {
+  const f = eventFinance();
+  const types = Object.values(f.byType).filter(t => t.n || t.cat !== "convidado" || true);
+  let html = `<div class="card"><div class="card-head"><h3>Finanças do evento</h3></div>
+    <div class="kpis">
+      <div><span>Vendido</span><b>${eur(f.sold)}</b><small>${f.tickets} bilhetes</small></div>
+      <div><span>Recebido</span><b>${eur(f.net)}</b>${f.refunded ? `<small>${eur(f.refunded)} devolvidos</small>` : "<small>&nbsp;</small>"}</div>
+      <div class="${f.due ? "is-due" : ""}"><span>Por receber</span><b>${eur(f.due)}</b><small>${S.bookings.filter(b => bookingDue(b) > 0).length} reservas</small></div>
+      <div><span>Despesas</span><b>${eur(f.expenses)}</b><small>${S.expenses.length} registos</small></div>
+      <div class="${f.balance < 0 ? "is-neg" : "is-pos"}"><span>Saldo</span><b>${eur(f.balance)}</b><small>recebido − despesas</small></div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Bilhete</th><th class="num">Qt.</th><th class="num">Valor</th></tr></thead><tbody>
+      ${types.map(t => `<tr><td>${esc(t.zone)} · ${CATS[t.cat]}</td><td class="num">${t.n}</td><td class="num">${eur(t.cents)}</td></tr>`).join("")}
+      <tr class="tot"><td>Total</td><td class="num">${f.tickets}</td><td class="num">${eur(f.sold)}</td></tr></tbody></table></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Método</th><th class="num">Recebido (líquido)</th></tr></thead><tbody>
+      ${Object.keys(METHODS).map(m => `<tr><td>${METHODS[m]}</td><td class="num">${eur(f.byMethod[m] || 0)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="row-btns"><button class="btn sm" data-act="fin-exp-pay" type="button">Exportar pagamentos</button><button class="btn sm" data-act="fin-exp-sum" type="button">Exportar resumo</button></div></div>`;
+  // expenses
+  const xf = S.expForm || { description: "", category: EXP_CATS[0], amount: "", date: (f.ev && f.ev.date) || todayISO() };
+  html += `<div class="card"><div class="card-head"><h3>Despesas</h3><b class="mono">${eur(f.expenses)}</b></div>
+    <div class="list">${S.expenses.length ? S.expenses.map(x => `<div class="xrow"><div><strong>${esc(x.description)}</strong><span class="small muted">${esc(x.category)} · ${fmtDate(x.date, { day: "2-digit", month: "2-digit", year: "numeric" })}</span></div><span class="mono num">${eur(x.amount_cents)}</span>
+      ${S.confirm === "xdel:" + x.id ? `<span class="row-btns"><button class="btn danger sm" data-act="x-del-yes" data-id="${esc(x.id)}" type="button">Apagar</button><button class="btn ghost sm" data-act="confirm-no" type="button">Não</button></span>` : `<button class="btn ghost sm" data-act="x-del" data-id="${esc(x.id)}" type="button" aria-label="Apagar despesa">✕</button>`}</div>`).join("") : `<div class="empty">Ainda não há despesas neste evento.</div>`}</div>
+    <div class="field"><label for="x-desc">Descrição</label><input id="x-desc" data-f="expForm.description" value="${esc(xf.description)}" placeholder="Ex.: Aluguer do som"></div>
+    <div class="grid3"><div class="field"><label for="x-cat">Categoria</label><select id="x-cat" data-f="expForm.category">${EXP_CATS.map(c => `<option ${xf.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>
+      <div class="field"><label for="x-amount">Valor (€)</label><input id="x-amount" inputmode="decimal" data-f="expForm.amount" value="${esc(xf.amount)}" placeholder="0,00"></div>
+      <div class="field"><label for="x-date">Data</label><input id="x-date" type="date" data-f="expForm.date" value="${esc(xf.date)}"></div></div>
+    <div class="row-btns"><button class="btn sm" data-act="x-add" type="button">Adicionar despesa</button></div></div>`;
+  // payments log
+  const pays = S.payments.slice().reverse();
+  html += `<div class="card"><div class="card-head"><h3>Pagamentos</h3><span class="small muted">${pays.length}</span></div>
+    <div class="paylist">${pays.length ? pays.slice(0, 80).map(p => `<div><span class="mono muted">${dt(p.created_at)}</span><span>${esc(p.booking_name)} · ${METHODS[p.method]}${p.amount_cents < 0 ? " · reembolso" : ""}</span><span class="mono num ${p.amount_cents < 0 ? "neg" : ""}">${eur(p.amount_cents)}</span></div>`).join("") : `<div class="empty">Ainda não há pagamentos neste evento.</div>`}</div></div>`;
+  return html;
+}
+function exportEventPayments() {
+  const ev = curEvent(); if (!ev) return;
+  const rows = [["Data", "Reserva", "Tipo", "Método", "Valor (€)", "Registado por", "Nota"]];
+  S.payments.forEach(p => rows.push([dt(p.created_at), p.booking_name, p.amount_cents < 0 ? "Reembolso" : "Pagamento", METHODS[p.method], money(p.amount_cents), p.created_by, p.note]));
+  S.expenses.length && rows.push([]) && rows.push(["Despesas"]) && rows.push(["Data", "Descrição", "Categoria", "", "Valor (€)", "Registado por"]);
+  S.expenses.forEach(x => rows.push([x.date, x.description, x.category, "", money(-x.amount_cents), x.created_by]));
+  saveCsv(`pagamentos-${slugify(ev.name)}-${ev.date}.csv`, rows);
+}
+function exportEventSummary() {
+  const f = eventFinance(); if (!f.ev) return;
+  const rows = [["Evento", f.ev.name], ["Data", f.ev.date + (f.ev.time ? " " + f.ev.time : "")], [], ["Bilhete", "Quantidade", "Valor (€)"]];
+  Object.values(f.byType).forEach(t => rows.push([`${t.zone} · ${CATS[t.cat]}`, t.n, money(t.cents)]));
+  rows.push(["Total vendido", f.tickets, money(f.sold)], [], ["Método", "Recebido líquido (€)"]);
+  Object.keys(METHODS).forEach(m => rows.push([METHODS[m], money(f.byMethod[m] || 0)]));
+  rows.push([], ["Recebido", money(f.received)], ["Devolvido", money(f.refunded)], ["Por receber", money(f.due)], ["Despesas", money(f.expenses)], ["Saldo", money(f.balance)]);
+  saveCsv(`resumo-${slugify(f.ev.name)}-${f.ev.date}.csv`, rows);
+}
+
+/* ---------- Cash register ---------- */
+function cashTotals(pays) { const t = {}; Object.keys(METHODS).forEach(m => t[m] = 0); pays.forEach(p => t[p.method] = (t[p.method] || 0) + p.amount_cents); return t; }
+function renderCashBtn() { const b = $("cashBtn"); if (b) { b.textContent = S.cash.open ? "Caixa aberta" : "Caixa"; b.classList.toggle("cash-on", !!S.cash.open); } }
+async function renderCash(reload = true) {
+  const o = $("cashOverlay"), c = S.cash, cf = S.cashForm || (S.cashForm = { opening: "", counted: "", notes: "" });
+  let body;
+  if (S.cashResult) {
+    const r = S.cashResult, d = r.difference_cents;
+    body = `<div class="verdict ${d === 0 ? "ok" : d > 0 ? "used" : "bad"}"><span class="ic" aria-hidden="true">${d === 0 ? "✓" : "!"}</span><b>Caixa fechada${d === 0 ? ", sem diferenças" : d > 0 ? ": sobra " + eur(d) : ": falta " + eur(-d)}</b><span>Esperado em dinheiro ${eur(r.expected_cents)} · contado ${eur(r.counted_cents)}</span></div>
+      <div class="row-btns"><button class="btn sm" data-act="cash-ack" type="button">OK</button></div>`;
+  } else if (!c.open) {
+    body = `<p class="muted" style="margin:0">A sua caixa está fechada. Abra-a antes de receber pagamentos: todos os pagamentos e reembolsos que registar ficam nesta caixa até a fechar.</p>
+      <div class="field"><label for="cash-opening">Fundo de caixa inicial (€)</label><input id="cash-opening" inputmode="decimal" data-f="cashForm.opening" value="${esc(cf.opening)}" placeholder="0,00"></div>
+      <div class="row-btns"><button class="btn primary sm" data-act="cash-open" type="button">Abrir caixa</button></div>`;
+  } else {
+    const t = cashTotals(c.payments), expected = c.open.opening_cents + t.dinheiro, counted = parseEur(cf.counted);
+    const diff = isFinite(counted) && cf.counted !== "" ? counted - expected : null;
+    body = `<p style="margin:0">Aberta em <b>${dt(c.open.opened_at)}</b> · fundo inicial <b>${eur(c.open.opening_cents)}</b> · ${c.payments.length} movimento${c.payments.length === 1 ? "" : "s"}</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Método</th><th class="num">Movimentos</th><th class="num">Total</th></tr></thead><tbody>
+      ${Object.keys(METHODS).map(m => `<tr><td>${METHODS[m]}</td><td class="num">${c.payments.filter(p => p.method === m).length}</td><td class="num">${eur(t[m])}</td></tr>`).join("")}
+      <tr class="tot"><td>Total recebido</td><td class="num">${c.payments.length}</td><td class="num">${eur(Object.values(t).reduce((a, b) => a + b, 0))}</td></tr></tbody></table></div>
+      <div class="sums"><div><span>Dinheiro esperado na gaveta</span><b>${eur(expected)}</b></div>${diff != null ? `<div class="${diff ? (diff < 0 ? "is-due" : "is-over") : ""}"><span>Diferença</span><b>${diff > 0 ? "+" : ""}${eur(diff)}</b></div>` : ""}</div>
+      <div class="grid2"><div class="field"><label for="cash-counted">Dinheiro contado (€)</label><input id="cash-counted" inputmode="decimal" data-f="cashForm.counted" value="${esc(cf.counted)}" placeholder="0,00"></div>
+      <div class="field"><label for="cash-notes">Notas do fecho</label><input id="cash-notes" data-f="cashForm.notes" value="${esc(cf.notes)}" placeholder="Opcional"></div></div>
+      <div class="row-btns"><button class="btn primary sm" data-act="cash-close" type="button">Fechar caixa</button></div>`;
+  }
+  o.innerHTML = `<div class="card" role="dialog" aria-label="Caixa" style="width:min(620px,100%)"><div class="card-head"><h3>Caixa · ${esc(S.me.email)}</h3><button class="btn ghost sm" data-act="cash-x" type="button">Fechar janela</button></div>${body}
+    <hr><div class="card-head"><h3>Fechos anteriores</h3><button class="btn ghost sm" data-act="cash-exp" type="button">Exportar</button></div><div id="cashHist" class="${S.cashHistHtml && !reload ? "tbl-wrap" : "small muted"}">${S.cashHistHtml && !reload ? S.cashHistHtml : "A carregar…"}</div></div>`;
+  o.hidden = false;
+  if (!reload && S.cashHistHtml) return;
+  try {
+    const ss = await S.store.finance.sessions(); S.cashHist = ss;
+    const pays = await S.store.finance.sessionPayments(ss.map(x => x.id)); S.cashHistPays = pays;
+    const h = $("cashHist"); if (!h) return;
+    h.className = "tbl-wrap";
+    h.innerHTML = ss.length ? `<table class="tbl"><thead><tr><th>Fecho</th><th>Pessoa</th><th class="num">Recebido</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferença</th></tr></thead><tbody>${ss.map(x => { const d = x.counted_cents - x.expected_cents, tot = pays.filter(p => p.session_id === x.id).reduce((a, p) => a + p.amount_cents, 0); return `<tr><td>${dt(x.closed_at)}</td><td>${esc(x.opened_by)}</td><td class="num">${eur(tot)}</td><td class="num">${eur(x.expected_cents)}</td><td class="num">${eur(x.counted_cents)}</td><td class="num ${d < 0 ? "neg" : d > 0 ? "pos" : ""}">${d > 0 ? "+" : ""}${eur(d)}</td></tr>`; }).join("")}</tbody></table>` : `<p class="muted small" style="margin:0">Ainda não há fechos de caixa.</p>`;
+    S.cashHistHtml = h.innerHTML;
+  } catch (e) { const h = $("cashHist"); if (h) h.textContent = "Não foi possível carregar o histórico."; }
+}
+function exportCash() {
+  const ss = S.cashHist || [], pays = S.cashHistPays || [];
+  const rows = [["Abertura", "Fecho", "Pessoa", "Fundo inicial (€)", ...Object.values(METHODS).map(m => m + " (€)"), "Esperado em dinheiro (€)", "Contado (€)", "Diferença (€)", "Notas"]];
+  ss.forEach(x => { const t = cashTotals(pays.filter(p => p.session_id === x.id)); rows.push([dt(x.opened_at), dt(x.closed_at), x.opened_by, money(x.opening_cents), ...Object.keys(METHODS).map(m => money(t[m])), money(x.expected_cents), money(x.counted_cents), money(x.counted_cents - x.expected_cents), x.notes]); });
+  saveCsv(`fechos-de-caixa-${todayISO()}.csv`, rows);
+}
+
+/* ---------- General summary ---------- */
+S.rep = { from: new Date().getFullYear() + "-01-01", to: new Date().getFullYear() + "-12-31" };
+async function renderReport() {
+  const o = $("repOverlay"), r = S.rep;
+  o.innerHTML = `<div class="card" role="dialog" aria-label="Relatórios" style="width:min(980px,100%)"><div class="card-head"><h3>Resumo financeiro</h3><button class="btn ghost sm" data-act="rep-x" type="button">Fechar</button></div>
+    <div class="row-btns"><div class="field"><label for="rep-from">De</label><input type="date" id="rep-from" data-f="rep.from" value="${esc(r.from)}"></div><div class="field"><label for="rep-to">Até</label><input type="date" id="rep-to" data-f="rep.to" value="${esc(r.to)}"></div>
+    <button class="btn sm" data-act="rep-go" type="button" style="align-self:flex-end">Atualizar</button></div>
+    <div id="repBody" class="small muted">A carregar…</div></div>`;
+  o.hidden = false;
+  try {
+    const rows = await S.store.finance.summary(r.from, r.to);
+    const ids = rows.map(x => x.event_id);
+    const pays = await S.store.finance.periodPayments(ids);
+    S.repData = { rows, pays };
+    const T = rows.reduce((a, x) => { ["tickets", "socio", "nao_socio", "convidado", "sold_cents", "received_cents", "refunded_cents", "expenses_cents"].forEach(k => a[k] = (a[k] || 0) + Number(x[k])); return a; }, {});
+    const bal = (x) => Number(x.received_cents) - Number(x.refunded_cents) - Number(x.expenses_cents);
+    const byM = cashTotals(pays);
+    const b = $("repBody"); if (!b) return; b.className = "";
+    b.innerHTML = !rows.length ? `<p class="muted" style="margin:0">Não há eventos neste período.</p>` : `
+      <div class="kpis"><div><span>Eventos</span><b>${rows.length}</b><small>${T.tickets} bilhetes</small></div><div><span>Vendido</span><b>${eur(T.sold_cents)}</b><small>&nbsp;</small></div>
+      <div><span>Recebido</span><b>${eur(T.received_cents - T.refunded_cents)}</b><small>${T.refunded_cents ? eur(T.refunded_cents) + " devolvidos" : "&nbsp;"}</small></div>
+      <div><span>Despesas</span><b>${eur(T.expenses_cents)}</b><small>&nbsp;</small></div><div class="${bal(T) < 0 ? "is-neg" : "is-pos"}"><span>Saldo</span><b>${eur(bal(T))}</b><small>&nbsp;</small></div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Data</th><th>Evento</th><th class="num">Sócio</th><th class="num">Não sócio</th><th class="num">Convid.</th><th class="num">Vendido</th><th class="num">Recebido</th><th class="num">Despesas</th><th class="num">Saldo</th></tr></thead><tbody>
+      ${rows.map(x => `<tr><td class="mono">${fmtDate(x.date, { day: "2-digit", month: "2-digit", year: "2-digit" })}</td><td>${esc(x.name)}</td><td class="num">${x.socio}</td><td class="num">${x.nao_socio}</td><td class="num">${x.convidado}</td><td class="num">${eur(x.sold_cents)}</td><td class="num">${eur(x.received_cents - x.refunded_cents)}</td><td class="num">${eur(x.expenses_cents)}</td><td class="num ${bal(x) < 0 ? "neg" : ""}">${eur(bal(x))}</td></tr>`).join("")}
+      <tr class="tot"><td></td><td>Total</td><td class="num">${T.socio}</td><td class="num">${T.nao_socio}</td><td class="num">${T.convidado}</td><td class="num">${eur(T.sold_cents)}</td><td class="num">${eur(T.received_cents - T.refunded_cents)}</td><td class="num">${eur(T.expenses_cents)}</td><td class="num">${eur(bal(T))}</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table class="tbl" style="max-width:420px"><thead><tr><th>Método</th><th class="num">Recebido (líquido)</th></tr></thead><tbody>${Object.keys(METHODS).map(m => `<tr><td>${METHODS[m]}</td><td class="num">${eur(byM[m])}</td></tr>`).join("")}</tbody></table></div>
+      <div class="row-btns"><button class="btn sm" data-act="rep-exp" type="button">Exportar resumo</button><button class="btn sm" data-act="rep-exp-mov" type="button">Exportar movimentos</button></div>`;
+  } catch (e) { const b = $("repBody"); if (b) b.textContent = errMsg(e); }
+}
+async function exportReport(kind) {
+  const d = S.repData; if (!d) return;
+  if (kind === "sum") {
+    const rows = [["Data", "Hora", "Evento", "Bilhetes", "Sócio", "Não sócio", "Convidado", "Vendido (€)", "Recebido (€)", "Devolvido (€)", "Despesas (€)", "Saldo (€)"]];
+    d.rows.forEach(x => rows.push([x.date, x.time, x.name, x.tickets, x.socio, x.nao_socio, x.convidado, money(x.sold_cents), money(x.received_cents), money(x.refunded_cents), money(x.expenses_cents), money(x.received_cents - x.refunded_cents - x.expenses_cents)]));
+    saveCsv(`resumo-financeiro-${S.rep.from}-a-${S.rep.to}.csv`, rows); return;
+  }
+  const names = new Map(d.rows.map(x => [x.event_id, x.name]));
+  const xs = await S.store.finance.periodExpenses(d.rows.map(x => x.event_id));
+  const rows = [["Data", "Evento", "Movimento", "Descrição", "Método/Categoria", "Valor (€)", "Registado por"]];
+  d.pays.forEach(p => rows.push([dt(p.created_at), names.get(p.event_id) || "", p.amount_cents < 0 ? "Reembolso" : "Pagamento", p.booking_name, METHODS[p.method], money(p.amount_cents), p.created_by]));
+  xs.forEach(x => rows.push([x.date, names.get(x.event_id) || "", "Despesa", x.description, x.category, money(-x.amount_cents), x.created_by]));
+  saveCsv(`movimentos-${S.rep.from}-a-${S.rep.to}.csv`, rows);
+}
+
 async function exportCsv(kind) {
   const ev = curEvent(); if (!ev) return;
   let rows;
   if (kind === "list") {
-    rows = [["Nome", "Contacto", "N.º lugares", "Lugares", "Notas", "Entradas", "Hora de entrada"]];
-    S.bookings.slice().sort((a, b) => a.name.localeCompare(b.name, "pt")).forEach(b => { const k = enteredCount(b), n = (b.seats || []).length; rows.push([b.name, b.contact, n, formatSeats(b.seats || []), b.notes, k === n ? "Sim" : k ? `${k}/${n}` : "Não", b.checkedAt ? new Date(b.checkedAt).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : ""]); });
+    rows = [["Nome", "Contacto", "N.º lugares", "Lugares", "Notas", "Entradas", "Hora de entrada", ...(canFinance() ? ["Total (€)", "Pago (€)", "Em falta (€)"] : [])]];
+    S.bookings.slice().sort((a, b) => a.name.localeCompare(b.name, "pt")).forEach(b => { const k = enteredCount(b), n = (b.seats || []).length; rows.push([b.name, b.contact, n, formatSeats(b.seats || []), b.notes, k === n ? "Sim" : k ? `${k}/${n}` : "Não", b.checkedAt ? new Date(b.checkedAt).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "", ...(canFinance() ? [money(bookingTotal(b)), money(bookingPaid(b)), money(Math.max(0, bookingDue(b)))] : [])]); });
   } else {
-    rows = [["Zona", "Fila", "Lugar", "Tipo", "Estado", "Nome", "Contacto", "Código do bilhete"]];
+    rows = [["Zona", "Fila", "Lugar", "Tipo de lugar", "Estado", "Nome", "Contacto", "Código do bilhete", "Bilhete", "Preço (€)"]];
     const blocked = blockedSet();
     S.layout.zones.forEach(z => z.rowsArr.forEach(r => r.seats.forEach(s => {
       const b = S.bookings.find(x => x.id === S.seatOwner.get(s.id));
       const tk = b && (b.tickets || []).find(t => t.s === s.id);
-      rows.push([z.name, s.row, pad(s.n), TYPE_NAMES[seatType(s.id)], b ? (seatIn(b, s.id) ? "Entrou" : "Reservado") : blocked.has(s.id) ? "Bloqueado" : "Livre", b ? b.name : "", b ? b.contact : "", tk ? tk.c : ""]);
+      rows.push([z.name, s.row, pad(s.n), TYPE_NAMES[seatType(s.id)], b ? (seatIn(b, s.id) ? "Entrou" : "Reservado") : blocked.has(s.id) ? "Bloqueado" : "Livre", b ? b.name : "", b ? b.contact : "", tk ? tk.c : "", b ? CATS[(b.cats || {})[s.id] || "nao_socio"] : "", b ? money((b.prices || {})[s.id] || 0) : ""]);
     })));
   }
   const csv = "﻿" + rows.map(r => r.map(csvCell).join(";")).join("\r\n");
@@ -1385,10 +1781,12 @@ async function enter(session) {
   S.readOnly = !S.me.admin;
   document.body.classList.toggle("role-user", !S.me.admin);
   if (!S.me.admin) S.tab = "scan";
-  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="staff-open">Equipa</button>` : ""}<button class="btn ghost sm" type="button" id="logout">Sair</button>`;
+  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="cash-open-ui" id="cashBtn">Caixa</button><button class="btn ghost sm" type="button" data-act="rep-open">Relatórios</button><button class="btn ghost sm" type="button" data-act="staff-open">Equipa</button>` : ""}<button class="btn ghost sm" type="button" id="logout">Sair</button>`;
   $("logout").onclick = () => sb.auth.signOut().then(() => location.reload());
   $("gate").hidden = true;
   if (!S.store) start(makeSupaStore(sb));
+  if (S.me.admin && S.store.finance && !S.unsubC) S.unsubC = S.store.finance.onCash((c) => { S.cash = c; renderCashBtn(); if (!$("cashOverlay").hidden && !S.cashResult) keepFocus(() => renderCash(false)); keepFocus(renderPanel); });
+  if (S.eventId && canFinance() && !S.unsubF) { const id = S.eventId; S.unsubF = S.store.finance.onEvent(id, (d) => { S.payments = d.payments; S.expenses = d.expenses; keepFocus(() => { renderTabs(); renderPanel(); }); }); }
 }
 async function renderStaff() {
   const o = $("staffOverlay");
