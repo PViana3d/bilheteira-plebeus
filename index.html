@@ -186,6 +186,7 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0;width:100%}
 
 /* standalone extras */
 body{margin:0}
+[hidden]{display:none!important}
 .top .spacer{flex:1}
 .whobar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:30}
@@ -197,8 +198,9 @@ body{margin:0}
 .staff-row span{overflow:hidden;text-overflow:ellipsis}
 .role-pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:9px;background:var(--sunk);color:var(--ink)}
 .role-pill.admin{background:var(--velvet);color:var(--velvet-ink)}
-body.role-user #mapCard{display:none}
-@media (min-width:1150px){ body.role-user .app{grid-template-columns:230px minmax(0,1fr) minmax(0,1.2fr)} }
+.seatinfo{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 10px;border-radius:8px;background:var(--sunk);font-size:13px}
+.seatinfo b{font-family:var(--f-display);font-size:15px}
+.seat.is-late{box-shadow:0 0 0 2px var(--warn)}
 .price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:4px}
 @media (min-width:700px){ .price-grid{grid-template-columns:repeat(4,minmax(0,1fr))} }
 .moneybox{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:8px;background:var(--sunk)}
@@ -223,6 +225,17 @@ body.role-user #mapCard{display:none}
 .pchip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
 .pchip.due{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
 .pchip.free{background:var(--sunk);color:var(--muted)}
+.pchip.late,.bk .who .pchip.late{background:color-mix(in srgb,var(--velvet) 14%,transparent);color:var(--velvet)}
+.latebox{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:8px;background:color-mix(in srgb,var(--velvet) 10%,transparent)}
+.dlrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+.hist{display:flex;flex-direction:column;font-size:12px}
+.hist>div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.hist>div:last-child{border-bottom:0}
+.hist .meta{grid-column:2;color:var(--muted)}
+details.histbox summary{cursor:pointer;font-weight:600;font-size:13px}
+.wl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.wl .row-btns{justify-content:flex-end}
+.wl.fits strong::after{content:" · cabe";color:var(--ok);font-weight:600;font-size:12px}
 .bk .who .pchip{font-family:var(--f-body);font-size:11px;margin-left:6px}
 .bk .who .pchip.ok{color:var(--ok)} .bk .who .pchip.due{color:var(--warn)} .bk .who .pchip.free{color:var(--muted)}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
@@ -286,6 +299,7 @@ body.role-user #mapCard{display:none}
       </div>
       <div class="map-scroll"><div class="map" id="map"></div></div>
       <p class="small muted" id="mapHint" style="margin:0"></p>
+      <div id="seatInfo" class="seatinfo" hidden></div>
     </div>
   </section>
 
@@ -300,7 +314,6 @@ body.role-user #mapCard{display:none}
 <div class="toast" id="toast" hidden></div>
 <div class="overlay" id="staffOverlay" hidden></div>
 <div class="overlay" id="cashOverlay" hidden></div>
-<div class="overlay" id="repOverlay" hidden></div>
 <div class="gate" id="gate"><div class="card" id="gateCard"><p class="muted" style="margin:0">A abrir…</p></div></div>
 
 
@@ -498,11 +511,13 @@ function supaErr(error) {
 function makeSupaStore(sb) {
   const L = { venue: [], events: [], logo: [], book: [], fin: [], cash: [] };
   async function fetchFin(l) {
-    const [p, x] = await Promise.all([
+    const [p, x, w, h] = await Promise.all([
       sb.from("payments").select("id,booking_id,booking_name,amount_cents,method,kind,note,created_by,created_at,session_id").eq("event_id", l.eid).order("created_at"),
-      sb.from("expenses").select("id,description,category,amount_cents,date,created_by,created_at").eq("event_id", l.eid).order("date")
+      sb.from("expenses").select("id,description,category,amount_cents,date,created_by,created_at").eq("event_id", l.eid).order("date"),
+      sb.from("waitlist").select("id,name,contact,people,zone,notes,status,booking_id,created_by,created_at").eq("event_id", l.eid).order("created_at"),
+      sb.from("audit_log").select("id,booking_id,booking_name,action,details,actor,created_at").eq("event_id", l.eid).order("id").limit(3000)
     ]);
-    if (!p.error && !x.error) l.cb({ payments: p.data, expenses: x.data });
+    if (!p.error && !x.error) l.cb({ payments: p.data, expenses: x.data, waitlist: w.error ? [] : w.data, audit: h.error ? [] : h.data });
   }
   async function fetchCash(c) {
     const me = (await sb.auth.getUser()).data.user; const email = ((me && me.email) || "").toLowerCase();
@@ -517,17 +532,17 @@ function makeSupaStore(sb) {
   const ok = (r) => { if (r.error) throw supaErr(r.error); return r.data; };
   async function fetchVenue() { const r = await sb.from("venue").select("zones,types").eq("id", 1).maybeSingle(); if (!r.error) L.venue.forEach(f => f(r.data)); }
   async function fetchEvents() {
-    const r = await sb.from("events").select("id,name,date,time,notes,paper,blocked,prices,created_at").order("date");
+    const r = await sb.from("events").select("id,name,date,time,notes,paper,blocked,prices,pay_days,created_at").order("date");
     if (!r.error) L.events.forEach(f => f(r.data.map(e => ({ ...e, blocked: e.blocked || [], createdAt: e.created_at }))));
   }
   async function fetchLogo(l) { const r = await sb.from("events").select("logo").eq("id", l.eid).maybeSingle(); if (!r.error) l.cb(r.data ? r.data.logo : null); }
   async function fetchBookings(l) {
     const [b, st] = await Promise.all([
-      sb.from("bookings").select("id,name,contact,notes,created_at").eq("event_id", l.eid).is("cancelled_at", null),
+      sb.from("bookings").select("id,name,contact,notes,created_at,pay_deadline").eq("event_id", l.eid).is("cancelled_at", null),
       sb.from("seats").select("seat_id,booking_id,code,entered_at,category,price_cents").eq("event_id", l.eid)
     ]);
     if (b.error || st.error) { l.err && l.err(supaErr(b.error || st.error)); return; }
-    const map = new Map(b.data.map(x => [x.id, { id: x.id, name: x.name, contact: x.contact, notes: x.notes, createdAt: x.created_at, seats: [], tickets: [], entered: {}, cats: {}, prices: {}, checkedIn: false, checkedAt: null }]));
+    const map = new Map(b.data.map(x => [x.id, { id: x.id, name: x.name, contact: x.contact, notes: x.notes, createdAt: x.created_at, deadline: x.pay_deadline, seats: [], tickets: [], entered: {}, cats: {}, prices: {}, checkedIn: false, checkedAt: null }]));
     st.data.forEach(r => { const k = map.get(r.booking_id); if (!k) return; k.seats.push(r.seat_id); k.cats[r.seat_id] = r.category; k.prices[r.seat_id] = r.price_cents; k.tickets.push({ s: r.seat_id, c: r.code }); if (r.entered_at) { k.entered[r.seat_id] = r.entered_at; if (!k.checkedAt || r.entered_at > k.checkedAt) k.checkedAt = r.entered_at; } });
     map.forEach(k => { k.checkedIn = k.seats.length > 0 && k.seats.every(id => k.entered[id]); });
     l.cb([...map.values()]);
@@ -539,6 +554,8 @@ function makeSupaStore(sb) {
     .on("postgres_changes", { event: "*", schema: "public", table: "seats" }, () => L.book.forEach(l => soon("b" + l.eid, () => fetchBookings(l))))
     .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => { L.fin.forEach(l => soon("f" + l.eid, () => fetchFin(l))); L.cash.forEach(c => soon("c", () => fetchCash(c))); })
     .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, () => L.fin.forEach(l => soon("f" + l.eid, () => fetchFin(l))))
+    .on("postgres_changes", { event: "*", schema: "public", table: "waitlist" }, () => L.fin.forEach(l => soon("f" + l.eid, () => fetchFin(l))))
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "audit_log" }, () => L.fin.forEach(l => soon("f" + l.eid, () => fetchFin(l))))
     .on("postgres_changes", { event: "*", schema: "public", table: "cash_sessions" }, () => L.cash.forEach(c => soon("c", () => fetchCash(c))))
     .subscribe();
   /* safety net if the realtime connection drops */
@@ -550,24 +567,24 @@ function makeSupaStore(sb) {
     onVenue: (cb) => sub(L.venue, cb, fetchVenue),
     saveVenue: async (v) => { ok(await sb.from("venue").upsert({ id: 1, zones: v.zones, types: v.types || {}, updated_at: new Date().toISOString() })); },
     onEvents: (cb) => sub(L.events, cb, fetchEvents),
-    addEvent: async (d) => { const r = ok(await sb.from("events").insert({ name: d.name, date: d.date, time: d.time || "", notes: d.notes || "", paper: d.paper || "80", blocked: d.blocked || [], ...(d.prices ? { prices: d.prices } : {}) }).select("id").single()); fetchEvents(); return r.id; },
-    updateEvent: async (id, p) => { const q = {}; ["name", "date", "time", "notes", "paper", "blocked", "prices"].forEach(k => { if (k in p) q[k] = p[k]; }); ok(await sb.from("events").update(q).eq("id", id)); fetchEvents(); },
+    addEvent: async (d) => { const r = ok(await sb.from("events").insert({ name: d.name, date: d.date, time: d.time || "", notes: d.notes || "", paper: d.paper || "80", blocked: d.blocked || [], pay_days: d.pay_days ?? null, ...(d.prices ? { prices: d.prices } : {}) }).select("id").single()); fetchEvents(); return r.id; },
+    updateEvent: async (id, p) => { const q = {}; ["name", "date", "time", "notes", "paper", "blocked", "prices", "pay_days"].forEach(k => { if (k in p) q[k] = p[k]; }); ok(await sb.from("events").update(q).eq("id", id)); fetchEvents(); },
     deleteEvent: async (id) => { ok(await sb.from("events").delete().eq("id", id)); fetchEvents(); },
     onLogo: (eid, cb) => { const l = { eid, cb }; return sub(L.logo, l, () => fetchLogo(l)); },
     setLogo: async (eid, data) => { ok(await sb.from("events").update({ logo: data || null }).eq("id", eid)); },
     onBookings: (eid, cb, err) => { const l = { eid, cb, err }; return sub(L.book, l, () => fetchBookings(l)); },
     addBooking: async (eid, d) => {
-      const id = ok(await sb.rpc("create_booking", { p_event: eid, p_name: d.name, p_contact: d.contact || "", p_notes: d.notes || "", p_seats: d.seats, p_codes: d.seats.map(x => makeCode(eid, x)), p_categories: d.seats.map(x => (d.cats && d.cats[x]) || "nao_socio") }));
+      const id = ok(await sb.rpc("create_booking", { p_event: eid, p_name: d.name, p_contact: d.contact || "", p_notes: d.notes || "", p_seats: d.seats, p_codes: d.seats.map(x => makeCode(eid, x)), p_categories: d.seats.map(x => (d.cats && d.cats[x]) || "nao_socio"), p_deadline: d.deadline || null }));
       refreshBookings(eid); return id;
     },
     updateBooking: async (eid, bid, p) => {
       if (p.seats) ok(await sb.rpc("set_booking_seats", { p_booking: bid, p_seats: p.seats, p_codes: p.seats.map(x => makeCode(eid, x)), p_categories: p.seats.map(x => (p.cats && p.cats[x]) || "nao_socio") }));
       if ("checkedIn" in p) ok(await sb.rpc("checkin_booking", { p_booking: bid, p_in: !!p.checkedIn }));
-      const q = {}; ["name", "contact", "notes"].forEach(k => { if (k in p) q[k] = p[k]; });
+      const q = {}; ["name", "contact", "notes"].forEach(k => { if (k in p) q[k] = p[k]; }); if ("deadline" in p) q.pay_deadline = p.deadline || null;
       if (Object.keys(q).length) ok(await sb.from("bookings").update(q).eq("id", bid));
       refreshBookings(eid);
     },
-    deleteBooking: async (eid, bid, refundMethod) => { ok(await sb.rpc("cancel_booking", { p_booking: bid, p_refund_method: refundMethod || null })); refreshBookings(eid); },
+    deleteBooking: async (eid, bid, refundMethod, reason) => { ok(await sb.rpc("cancel_booking", { p_booking: bid, p_refund_method: refundMethod || null, p_reason: reason || null })); refreshBookings(eid); },
     finance: {
       onEvent: (eid, cb) => { const l = { eid, cb }; return sub(L.fin, l, () => fetchFin(l)); },
       onCash: (cb) => sub(L.cash, cb, () => fetchCash(cb)),
@@ -579,9 +596,9 @@ function makeSupaStore(sb) {
       closeCash: async (cents, notes) => { const r = ok(await sb.rpc("close_cash", { p_counted_cents: cents, p_notes: notes || "" })); L.cash.forEach(c => fetchCash(c)); return r; },
       sessions: async () => ok(await sb.from("cash_sessions").select("id,opened_by,opened_at,opening_cents,closed_at,expected_cents,counted_cents,notes").not("closed_at", "is", null).order("closed_at", { ascending: false }).limit(60)),
       sessionPayments: async (ids) => ids.length ? ok(await sb.from("payments").select("session_id,method,amount_cents").in("session_id", ids)) : [],
-      summary: async (from, to) => ok(await sb.rpc("finance_summary", { p_from: from, p_to: to })),
-      periodPayments: async (ids) => ids.length ? ok(await sb.from("payments").select("event_id,booking_name,amount_cents,method,kind,note,created_by,created_at").in("event_id", ids).order("created_at")) : [],
-      periodExpenses: async (ids) => ids.length ? ok(await sb.from("expenses").select("event_id,description,category,amount_cents,date,created_by").in("event_id", ids).order("date")) : []
+      addWait: async (eid, d) => { ok(await sb.from("waitlist").insert({ event_id: eid, ...d })); L.fin.forEach(l => fetchFin(l)); },
+      updateWait: async (id, p) => { ok(await sb.from("waitlist").update(p).eq("id", id)); L.fin.forEach(l => fetchFin(l)); },
+      deleteWait: async (id) => { ok(await sb.from("waitlist").delete().eq("id", id)); L.fin.forEach(l => fetchFin(l)); }
     },
     validate: async (eid, code) => { const r = ok(await sb.rpc("validate_ticket", { p_event: eid, p_code: code })); refreshBookings(eid); return r; }
   };
@@ -607,7 +624,7 @@ const S = {
   auto: { n: 2, zone: "any", type: "normal" },
   newEvent: null, editEvent: null, confirm: null, unsubB: null, pendingBlocked: {}, pendingVenue: null,
   unsubL: null, logo: null, ticketIndex: new Map(),
-  payments: [], expenses: [], unsubF: null, cash: { open: null, payments: [] }, payForm: null, expForm: null, refundMethod: "dinheiro", scanInput: "", scan: null, scanLog: [], tk: null
+  payments: [], expenses: [], waitlist: [], audit: [], waitForm: null, seatInfo: null, dlEdit: null, unsubF: null, cash: { open: null, payments: [] }, payForm: null, expForm: null, refundMethod: "dinheiro", scanInput: "", scan: null, scanLog: [], tk: null
 };
 try { const last = localStorage.getItem("bp-event"); if (last) S.eventId = last; } catch (e) {}
 
@@ -620,6 +637,14 @@ const bookingTotal = (b) => (b.seats || []).reduce((a, id) => a + ((b.prices && 
 const bookingPaid = (b) => S.payments.reduce((a, p) => a + (p.booking_id === b.id ? p.amount_cents : 0), 0);
 const bookingDue = (b) => bookingTotal(b) - bookingPaid(b);
 const lastMethod = (b) => { const ps = S.payments.filter(p => p.booking_id === b.id && p.amount_cents > 0); return ps.length ? ps[ps.length - 1].method : null; };
+const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const isLate = (b) => !!(b && b.deadline && b.deadline < todayISO() && bookingDue(b) > 0);
+const daysLate = (b) => Math.round((new Date(todayISO() + "T12:00:00") - new Date(b.deadline + "T12:00:00")) / 864e5);
+const fmtD = (iso) => iso ? fmtDate(iso, { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+function deadlineChip(b) {
+  if (!canFinance() || !b.deadline || bookingDue(b) <= 0) return "";
+  return isLate(b) ? `<span class="pchip late">Prazo expirado</span>` : `<span class="pchip due">Pagar até ${fmtDate(b.deadline, { day: "2-digit", month: "2-digit" })}</span>`;
+}
 function payChip(b) {
   if (!canFinance()) return "";
   const t = bookingTotal(b), d = bookingDue(b);
@@ -649,7 +674,18 @@ function keepFocus(fn) {
   fn();
   if (id) { const el = $(id); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
 }
-function renderAll() { keepFocus(() => { renderEvents(); renderHeader(); renderModeBar(); renderMapIfNeeded(); updateSeats(); renderTabs(); renderPanel(); }); }
+function renderAll() { keepFocus(() => { renderEvents(); renderHeader(); renderModeBar(); renderMapIfNeeded(); updateSeats(); renderSeatInfo(); renderTabs(); renderPanel(); }); }
+function renderSeatInfo() {
+  const box = $("seatInfo"); if (!box) return;
+  const id = S.seatInfo; if (!id || canWrite() || !curEvent()) { box.hidden = true; return; }
+  const b = S.bookings.find(x => x.id === S.seatOwner.get(id)), t = seatType(id);
+  let html = `<b>${esc(seatName(id))}</b>${t !== "normal" ? `<span class="pchip free">${TYPE_NAMES[t]}</span>` : ""}`;
+  if (b) {
+    const inn = seatIn(b, id), at = (b.entered && b.entered[id]) || b.checkedAt;
+    html += `<span><strong>${esc(b.name)}</strong></span><span class="muted">${CATS[(b.cats || {})[id] || "nao_socio"]}</span><span class="status ${inn ? "in" : "out"}">${inn ? "Entrou" + (at ? " às " + hhmm(at) : "") : "Por entrar"}</span>${(b.seats || []).length > 1 ? `<span class="small muted">Reserva com ${(b.seats || []).length} lugares: ${esc(formatSeats(b.seats))}</span>` : ""}`;
+  } else html += `<span class="muted">${blockedSet().has(id) ? "Bloqueado" : "Livre"}</span>`;
+  box.innerHTML = html; box.hidden = false;
+}
 
 /* ---------- Events rail ---------- */
 function fmtDate(d, opts) { if (!d) return ""; const x = new Date(d + "T12:00:00"); return isNaN(x) ? d : x.toLocaleDateString("pt-PT", opts); }
@@ -677,6 +713,7 @@ function eventForm(p, v) {
     <div class="field"><label for="${p}-time">Hora</label><input type="time" id="${p}-time" data-f="${p}.time" value="${esc(v.time)}"></div></div>
     <div class="grid2"><div class="field"><label for="${p}-notes">Notas</label><input id="${p}-notes" data-f="${p}.notes" value="${esc(v.notes)}" placeholder="Opcional"></div>
     <div class="field"><label for="${p}-paper">Rolo dos bilhetes</label><select id="${p}-paper" data-f="${p}.paper">${Object.entries(PAPERS).map(([k, o]) => `<option value="${k}" ${String(v.paper || "80") === k ? "selected" : ""}>${o.name}</option>`).join("")}</select></div></div>
+    <div class="field"><label for="${p}-paydays">Prazo de pagamento por defeito (dias após a reserva)</label><input id="${p}-paydays" type="number" min="0" max="365" data-f="${p}.pay_days" value="${esc(v.pay_days ?? "")}" placeholder="Sem prazo"></div>
     <div class="field"><span class="label">Preços dos bilhetes (€) · Convidado é sempre gratuito</span>
     <div class="price-grid">${S.layout.zones.map(z => ["socio", "nao_socio"].map(c => `<div class="field"><label for="${p}-pr-${z.id}-${c}">${esc(z.name)} (${CATS[c].toLowerCase()})</label><input id="${p}-pr-${z.id}-${c}" inputmode="decimal" data-f="${p}.pr_${z.id}_${c}" value="${esc(v["pr_" + z.id + "_" + c] ?? "")}" placeholder="0,00"></div>`).join("")).join("")}</div></div>`;
 }
@@ -723,7 +760,7 @@ function renderHeader() {
 /* ---------- Mode bar ---------- */
 function renderModeBar() {
   const mb = $("modeBar");
-  if (!canWrite()) { mb.innerHTML = `<span class="muted small">Modo de consulta</span>`; return; }
+  if (!canWrite()) { mb.innerHTML = `<span class="muted small">Modo de consulta</span>`; $("mapHint").textContent = "Passe o rato ou clique num lugar para ver quem o reservou."; return; }
   const m = (k, t) => `<button type="button" class="${S.mode === k ? "on" : ""}" data-mode="${k}">${t}</button>`;
   mb.innerHTML = `<div class="seg">${m("book", "Reservar")}${m("block", "Bloquear lugares")}${m("types", "Tipos de lugar")}</div>
     ${S.mode === "types" ? `<div class="seg">${["normal", "acc", "vip"].map(k => `<button type="button" class="${S.brush === k ? "on" : ""}" data-brush="${k}">${TYPE_NAMES[k]}</button>`).join("")}</div>` : ""}
@@ -767,6 +804,7 @@ function updateSeats() {
     else if (blocked.has(id)) { cls += " is-blocked"; state = "Bloqueado"; }
     else if (S.selection.has(id)) { cls += " is-sel"; state = "Selecionado"; }
     if (focusSeats.has(id) && !re) cls += " is-hl";
+    if (owner && canFinance() && isLate(owner)) cls += " is-late";
     if (el.className !== cls) el.className = cls;
     const title = `${seatName(id)}${t !== "normal" ? " (" + TYPE_NAMES[t] + ")" : ""} · ${state}`;
     if (el.title !== title) el.title = title;
@@ -834,12 +872,13 @@ function suggest(n, zonePref, type) {
 function renderTabs() {
   const t = (k, label, count) => `<button type="button" class="${S.tab === k ? "on" : ""}" data-tab="${k}">${label}${count != null ? `<span class="count">${count}</span>` : ""}</button>`;
   if (isUser()) { S.tab = "scan"; $("tabs").innerHTML = t("scan", "Entradas"); return; }
-  $("tabs").innerHTML = t("book", "Reservar") + t("list", "Reservas", S.bookings.length) + t("scan", "Entradas") + (canFinance() ? t("fin", "Finanças") : "");
+  const nWait = S.waitlist.filter(w => w.status === "aguarda" || w.status === "contactado").length;
+  $("tabs").innerHTML = t("book", "Reservar") + t("list", "Reservas", S.bookings.length) + t("scan", "Entradas") + (canFinance() ? t("wait", "Espera", nWait || null) + t("fin", "Finanças") : "");
 }
 function renderPanel() {
   const body = $("panelBody"), ev = curEvent();
   if (!ev) { body.innerHTML = `<div class="card"><p class="muted" style="margin:0">Selecione um evento à esquerda para reservar lugares e registar entradas.</p></div>`; return; }
-  body.innerHTML = (isUser() || S.tab === "scan") ? scanPanel() : S.tab === "list" ? listPanel() : (S.tab === "fin" && canFinance()) ? financePanel() : bookPanel();
+  body.innerHTML = (isUser() || S.tab === "scan") ? scanPanel() : S.tab === "list" ? listPanel() : (S.tab === "fin" && canFinance()) ? financePanel() : (S.tab === "wait" && canFinance()) ? waitPanel() : bookPanel();
   if (isUser() && !document.querySelector(".overlay:not([hidden])")) { const i = $("scan-input"); if (i && document.activeElement !== i && !(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) i.focus({ preventScroll: true }); }
 }
 function bookPanel() {
@@ -865,14 +904,15 @@ function bookPanel() {
       <div class="field"><label for="ed-contact">Contacto</label><input id="ed-contact" data-f="edit.contact" value="${esc(e.contact)}"></div>
       <div class="field"><label for="ed-notes">Notas</label><textarea id="ed-notes" data-f="edit.notes">${esc(e.notes)}</textarea></div>
       <div class="row-btns">
-        <button class="btn primary sm" data-act="tk-open" data-id="${esc(fb.id)}" type="button">Imprimir bilhetes (${nAll})</button>
+        <button class="btn primary sm" data-act="tk-open" data-id="${esc(fb.id)}" type="button">Bilhetes (${nAll}): imprimir ou descarregar</button>
         <button class="btn sm" data-act="checkin" data-id="${esc(fb.id)}" type="button">${nIn === nAll ? "Anular entrada" : "Registar entrada"}</button>
         ${S.edit ? `<button class="btn sm" data-act="ed-save" type="button">Guardar alterações</button>` : ""}
         <button class="btn sm" data-act="re-open" type="button">Alterar lugares</button>
         <button class="btn ghost sm" data-act="bk-cancel" type="button">Cancelar reserva</button>
         <button class="btn ghost sm" data-act="focus-close" type="button">Fechar</button>
       </div>
-      ${conf ? cancelConfirm(fb) : ""}`
+      ${conf ? cancelConfirm(fb) : S.confirm === "release:" + fb.id ? cancelConfirm(fb, true) : ""}
+      ${canFinance() ? bookingHistory(fb) : ""}`
       : `<p style="margin:0"><b>${esc(fb.name)}</b><br><span class="muted">${esc(fb.contact || "")}</span></p>${fb.notes ? `<p class="small" style="margin:0">${esc(fb.notes)}</p>` : ""}<div class="row-btns"><button class="btn ghost sm" data-act="focus-close" type="button">Fechar</button></div>`}
     </div>`;
     return html;
@@ -905,13 +945,30 @@ function bookPanel() {
 const catSel = (attr, id, cur) => `<select ${attr}="${esc(id)}" aria-label="Tipo de bilhete">${Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${cur === k ? "selected" : ""}>${v}</option>`).join("")}</select>`;
 const selCat = (id) => S.form.cats[id] || S.form.catAll;
 const selTotal = (sel) => sel.reduce((a, id) => a + priceOf(curEvent(), id, selCat(id)), 0);
-function cancelConfirm(fb) {
+function cancelConfirm(fb, release) {
   const paid = canFinance() ? bookingPaid(fb) : 0, n = (fb.seats || []).length;
-  if (paid <= 0) return `<div class="confirm"><p>Cancelar a reserva de <b>${esc(fb.name)}</b> e libertar ${n} lugar${n === 1 ? "" : "es"}?</p><button class="btn danger sm" data-act="bk-cancel-yes" type="button">Cancelar reserva</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div>`;
-  return `<div class="confirm" style="flex-direction:column;align-items:stretch"><p>Cancelar a reserva de <b>${esc(fb.name)}</b> e libertar ${n} lugar${n === 1 ? "" : "es"}? Foram pagos <b>${eur(paid)}</b>.</p>
+  const q = release ? `Libertar ${n} lugar${n === 1 ? "" : "es"} de <b>${esc(fb.name)}</b> por o prazo de pagamento ter expirado? A reserva é cancelada e fica registada no histórico.` : `Cancelar a reserva de <b>${esc(fb.name)}</b> e libertar ${n} lugar${n === 1 ? "" : "es"}?`;
+  const lbl = release ? "Libertar lugares" : "Cancelar reserva";
+  if (paid <= 0) return `<div class="confirm"><p>${q}</p><button class="btn danger sm" data-act="bk-cancel-yes" type="button">${lbl}</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div>`;
+  return `<div class="confirm" style="flex-direction:column;align-items:stretch"><p>${q} Foram pagos <b>${eur(paid)}</b>.</p>
     <div class="row-btns"><label class="small" for="cx-method">Devolver em</label><select id="cx-method" data-f="refundMethod">${Object.entries(METHODS).map(([k, v]) => `<option value="${k}" ${S.refundMethod === k ? "selected" : ""}>${v}</option>`).join("")}</select></div>
     ${S.cash.open ? "" : `<p class="small warn" style="margin:0">Para devolver o dinheiro tem de <button class="linkbtn" data-act="cash-open-ui" type="button">abrir a caixa</button>.</p>`}
-    <div class="row-btns"><button class="btn danger sm" data-act="bk-cancel-refund" type="button" ${S.cash.open ? "" : "disabled"}>Cancelar e devolver ${eur(paid)}</button><button class="btn sm" data-act="bk-cancel-yes" type="button">Cancelar sem devolver</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div></div>`;
+    <div class="row-btns"><button class="btn danger sm" data-act="bk-cancel-refund" type="button" ${S.cash.open ? "" : "disabled"}>${lbl} e devolver ${eur(paid)}</button><button class="btn sm" data-act="bk-cancel-yes" type="button">${lbl} sem devolver</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div></div>`;
+}
+function deadlineBlock(fb, due) {
+  if (S.dlEdit === fb.id) return `<div class="dlrow"><label for="dl-date">Pagar até</label><input type="date" id="dl-date" value="${esc(fb.deadline || addDays(todayISO(), 3))}"><button class="btn primary sm" data-act="dl-save" type="button">Guardar prazo</button>${fb.deadline ? `<button class="btn ghost sm" data-act="dl-clear" type="button">Sem prazo</button>` : ""}<button class="btn ghost sm" data-act="dl-cancel" type="button">Cancelar</button></div>`;
+  if (due <= 0) return fb.deadline ? `<div class="dlrow muted">Prazo de pagamento ${fmtD(fb.deadline)} · cumprido</div>` : "";
+  if (!fb.deadline) return `<div class="dlrow"><span class="muted">Sem prazo de pagamento.</span><button class="linkbtn" data-act="dl-edit" type="button">Definir prazo</button></div>`;
+  if (!isLate(fb)) return `<div class="dlrow"><span>Pagar até <b>${fmtD(fb.deadline)}</b></span><button class="linkbtn" data-act="dl-edit" type="button">Alterar</button></div>`;
+  const n = daysLate(fb);
+  return `<div class="latebox"><b>Prazo de pagamento expirado</b><span class="small">Terminou a ${fmtD(fb.deadline)} (há ${n} dia${n === 1 ? "" : "s"}) e faltam ${eur(due)}. Os lugares continuam reservados até decidir.</span>
+    <div class="row-btns"><button class="btn danger sm" data-act="bk-release" type="button">Libertar lugares</button><button class="btn sm" data-act="dl-edit" type="button">Dar mais prazo</button></div></div>`;
+}
+function formDeadline() {
+  const ev = curEvent(), days = ev && ev.pay_days;
+  const on = S.form.deadlineOn ?? (days != null);
+  const date = S.form.deadline || addDays(todayISO(), days != null ? days : 3);
+  return { on, date };
 }
 function newBookingMoney(sel) {
   const ev = curEvent();
@@ -921,6 +978,8 @@ function newBookingMoney(sel) {
   if (canFinance() && selTotal(sel) > 0) {
     html += `<div class="field"><label for="nb-pay">Pagamento</label><select id="nb-pay" data-f="form.payMethod"><option value="">Por pagar (paga mais tarde)</option>${Object.entries(METHODS).map(([k, v]) => `<option value="${k}" ${S.form.payMethod === k ? "selected" : ""}>Pago agora · ${v}</option>`).join("")}</select></div>`;
     if (S.form.payMethod && !S.cash.open) html += `<p class="small warn" style="margin:0">A sua caixa está fechada. <button class="linkbtn" data-act="cash-open-ui" type="button">Abrir caixa</button> para registar o pagamento.</p>`;
+    if (!S.form.payMethod) { const dl = formDeadline();
+      html += `<div class="dlrow"><label class="check"><input type="checkbox" id="nb-dlon" ${dl.on ? "checked" : ""}> Prazo de pagamento</label>${dl.on ? `<input type="date" id="nb-dl" data-f="form.deadline" value="${esc(dl.date)}" min="${todayISO()}">` : ""}</div>`; }
   }
   return html + `</div>`;
 }
@@ -930,6 +989,7 @@ function bookingMoney(fb) {
   const seatsSorted = (fb.seats || []).slice().sort((a, b) => firstPos({ seats: [a] }) - firstPos({ seats: [b] }));
   let html = `<div class="moneybox"><div class="seatcats">${seatsSorted.map(id => `<div class="seatcat"><span class="mono">${esc(seatName(id))}</span>${catSel("data-bcat", id, (fb.cats || {})[id] || "nao_socio")}<span class="mono num">${eur((fb.prices || {})[id] || 0)}</span></div>`).join("")}</div>
     <div class="sums"><div><span>Total</span><b>${eur(total)}</b></div><div><span>Pago</span><b>${eur(paid)}</b></div><div class="${due > 0 ? "is-due" : due < 0 ? "is-over" : ""}"><span>${due < 0 ? "A devolver" : "Em falta"}</span><b>${eur(Math.abs(due))}</b></div></div>`;
+  html += deadlineBlock(fb, due);
   if (pays.length) html += `<div class="paylist">${pays.map(p => `<div><span class="mono muted">${new Date(p.created_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" })} ${hhmm(p.created_at)}</span><span>${p.amount_cents < 0 ? "Reembolso" : "Pagamento"} · ${METHODS[p.method]}</span><span class="mono num ${p.amount_cents < 0 ? "neg" : ""}">${eur(p.amount_cents)}</span></div>`).join("")}</div>`;
   const pf = S.payForm && S.payForm.bid === fb.id ? S.payForm : null;
   if (pf) {
@@ -951,17 +1011,20 @@ function listPanel() {
   if (S.filter === "out") rows = rows.filter(b => !allIn(b));
   if (S.filter === "in") rows = rows.filter(b => enteredCount(b) > 0);
   if (S.filter === "due") rows = rows.filter(b => bookingDue(b) > 0);
+  if (S.filter === "late") rows = rows.filter(b => isLate(b));
   if (nq) rows = rows.filter(b => norm(b.name).includes(nq) || norm(b.contact).includes(nq) || norm(formatSeats(b.seats || [])).includes(nq) || (b.seats || []).some(id => { const s = S.layout.idx.get(id); const k = nq.replace(/[\s-]/g, ""); return !!k && !!s && (norm(s.row + pad(s.n)) === k || norm(s.row + s.n) === k); }));
   const nIn = S.bookings.filter(b => enteredCount(b) > 0).length, nOut = S.bookings.filter(b => !allIn(b)).length;
   const f = (k, t) => `<button type="button" class="${S.filter === k ? "on" : ""}" data-filter="${k}">${t}</button>`;
-  let html = `<div class="card">
+  const nLate = canFinance() ? S.bookings.filter(isLate).length : 0;
+  let html = nLate && S.filter !== "late" ? `<div class="latebox"><b>${nLate} reserva${nLate === 1 ? "" : "s"} com prazo de pagamento expirado</b><span class="small">Os lugares continuam reservados. Reveja cada uma e liberte os lugares só se quiser.</span><div class="row-btns"><button class="btn sm" type="button" data-filter="late">Ver reservas</button></div></div>` : "";
+  html += `<div class="card">
     <div class="field"><label for="search">Procurar por nome, contacto ou lugar</label><input id="search" type="search" data-f="search" value="${esc(S.search)}" placeholder="Ex.: Silva ou F-12" autocomplete="off"></div>
-    <div class="row-btns"><div class="seg">${f("all", "Todas")}${f("out", "Por entrar " + nOut)}${f("in", "Entraram " + nIn)}${canFinance() ? f("due", "Por pagar " + S.bookings.filter(b => bookingDue(b) > 0).length) : ""}</div></div>
+    <div class="row-btns"><div class="seg">${f("all", "Todas")}${f("out", "Por entrar " + nOut)}${f("in", "Entraram " + nIn)}${canFinance() ? f("due", "Por pagar " + S.bookings.filter(b => bookingDue(b) > 0).length) : ""}${canFinance() && S.bookings.some(isLate) ? f("late", "Prazo expirado " + S.bookings.filter(isLate).length) : ""}</div></div>
     <div class="list">`;
   if (!rows.length) html += `<div class="empty">${S.bookings.length ? "Nenhuma reserva corresponde à pesquisa." : "Ainda não há reservas neste evento."}</div>`;
   rows.forEach(b => {
     const k = enteredCount(b), n = (b.seats || []).length, done = k === n;
-    html += `<div class="bk ${done ? "in" : ""}"><button type="button" class="who" data-focus="${esc(b.id)}"><strong>${esc(b.name)}</strong><span>${esc(formatSeats(b.seats || []))} · ${(b.seats || []).length}</span>${payChip(b)}</button>
+    html += `<div class="bk ${done ? "in" : ""}"><button type="button" class="who" data-focus="${esc(b.id)}"><strong>${esc(b.name)}</strong><span>${esc(formatSeats(b.seats || []))} · ${(b.seats || []).length}</span>${payChip(b)}${deadlineChip(b)}</button>
       ${canWrite() ? `<span class="row-btns">${k && !done ? `<span class="status in">${k}/${n}</span>` : ""}<button type="button" class="btn sm ${done ? "" : "primary"}" data-act="checkin" data-id="${esc(b.id)}">${done ? "Anular" : "Entrou"}</button></span>` : `<span class="status ${k ? "in" : "out"}">${done ? "Entrou" : k ? k + "/" + n : "Por entrar"}</span>`}</div>`;
   });
   html += `</div></div>
@@ -982,9 +1045,9 @@ function setField(path, value) {
   if (a === "ne") { S.newEvent[b] = value; return; }
   if (a === "ee") { S.editEvent[b] = value; return; }
   if (a === "payForm") { if (S.payForm) S.payForm[b] = value; return; }
+  if (a === "waitForm") { S.waitForm = S.waitForm || { name: "", contact: "", people: "2", zone: "", notes: "" }; S.waitForm[b] = value; return; }
   if (a === "expForm") { S.expForm = S.expForm || {}; S.expForm[b] = value; return; }
   if (a === "cashForm") { S.cashForm = S.cashForm || {}; S.cashForm[b] = value; return; }
-  if (a === "rep") { S.rep[b] = value; return; }
   if (a === "auto" && b === "n") value = Math.max(1, Math.min(60, parseInt(value, 10) || 1));
   S[a][b] = value;
 }
@@ -999,6 +1062,7 @@ document.addEventListener("change", async (e) => {
   const f = e.target.dataset && e.target.dataset.f; if (f && e.target.tagName === "SELECT") setField(f, e.target.value);
   if (f === "form.catAll") { S.form.cats = {}; keepFocus(renderPanel); }
   if (f === "form.payMethod") keepFocus(renderPanel);
+  if (e.target.id === "nb-dlon") { S.form.deadlineOn = e.target.checked; keepFocus(renderPanel); }
   if (e.target.dataset && e.target.dataset.cat) { S.form.cats[e.target.dataset.cat] = e.target.value; keepFocus(renderPanel); }
   if (e.target.dataset && e.target.dataset.bcat) {
     const ev = curEvent(), b = S.bookings.find(x => x.id === S.focus); if (!ev || !b) return;
@@ -1030,8 +1094,8 @@ function selectEvent(id) {
   if (S.unsubB) { S.unsubB(); S.unsubB = null; }
   if (S.unsubL) { S.unsubL(); S.unsubL = null; }
   if (S.unsubF) { S.unsubF(); S.unsubF = null; }
-  S.payments = []; S.expenses = []; S.payForm = null; S.expForm = null;
-  if (id && canFinance()) S.unsubF = S.store.finance.onEvent(id, (d) => { S.payments = d.payments; S.expenses = d.expenses; keepFocus(() => { renderTabs(); renderPanel(); }); });
+  S.payments = []; S.expenses = []; S.waitlist = []; S.audit = []; S.payForm = null; S.expForm = null; S.seatInfo = null; S.dlEdit = null;
+  if (id && canFinance()) S.unsubF = S.store.finance.onEvent(id, (d) => { S.payments = d.payments; S.expenses = d.expenses; S.waitlist = d.waitlist || []; S.audit = d.audit || []; updateSeats(); keepFocus(() => { renderTabs(); renderPanel(); }); });
   S.logo = null; S.scan = null; S.scanLog = [];
   if (id && S.store) S.unsubL = S.store.onLogo(id, (d) => { S.logo = d; renderHeader(); }, () => {});
   if (id && S.store) S.unsubB = S.store.onBookings(id, (list) => {
@@ -1086,8 +1150,8 @@ mapEl.addEventListener("click", (e) => {
     S.reassign.seats.has(id) ? S.reassign.seats.delete(id) : S.reassign.seats.add(id);
     updateSeats(); keepFocus(renderPanel); return;
   }
-  if (owner) { S.focus = owner; S.edit = null; S.confirm = null; S.tab = "book"; renderAll(); return; }
-  if (!canWrite()) return;
+  if (!canWrite()) { S.seatInfo = id; S.focus = owner || null; updateSeats(); renderSeatInfo(); return; }
+  if (owner) { S.focus = owner; S.edit = null; S.confirm = null; S.dlEdit = null; S.tab = "book"; renderAll(); return; }
   if (blockedSet().has(id)) { toast(`${seatName(id)} está bloqueado neste evento.`); return; }
   S.selection.has(id) ? S.selection.delete(id) : S.selection.add(id);
   S.focus = null; S.edit = null; S.tab = "book";
@@ -1109,15 +1173,15 @@ document.addEventListener("click", async (e) => {
       const d = S.newEvent; if (!d.name.trim() || !d.date) { toast("Indique o nome e a data do evento."); return; }
       btn.disabled = true;
       let prices; try { prices = formToPrices(d); } catch (er) { btn.disabled = false; toast(er.message); return; }
-      try { const id = await S.store.addEvent({ name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80", prices, blocked: [], createdAt: new Date().toISOString() }); S.newEvent = null; selectEvent(id); toast("Evento criado."); }
+      try { const id = await S.store.addEvent({ name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80", prices, pay_days: d.pay_days === "" || d.pay_days == null ? null : Math.max(0, parseInt(d.pay_days, 10) || 0), blocked: [], createdAt: new Date().toISOString() }); S.newEvent = null; selectEvent(id); toast("Evento criado."); }
       catch (err) { btn.disabled = false; toast(errMsg(err)); }
       break; }
-    case "ee-open": S.editEvent = { name: ev.name, date: ev.date, time: ev.time || "", notes: ev.notes || "", paper: ev.paper || "80", ...pricesToForm(ev.prices) }; renderHeader(); break;
+    case "ee-open": S.editEvent = { name: ev.name, date: ev.date, time: ev.time || "", notes: ev.notes || "", paper: ev.paper || "80", pay_days: ev.pay_days ?? "", ...pricesToForm(ev.prices) }; renderHeader(); break;
     case "ee-cancel": S.editEvent = null; renderHeader(); break;
     case "ee-save": {
       const d = S.editEvent; if (!d.name.trim() || !d.date) { toast("Indique o nome e a data do evento."); return; }
       let prices; try { prices = formToPrices(d); } catch (er) { toast(er.message); return; }
-      await run(() => S.store.updateEvent(ev.id, { name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80", prices }), "Evento atualizado. Os novos preços aplicam-se às próximas reservas.");
+      await run(() => S.store.updateEvent(ev.id, { name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80", prices, pay_days: d.pay_days === "" || d.pay_days == null ? null : Math.max(0, parseInt(d.pay_days, 10) || 0) }), "Evento atualizado. Os novos preços aplicam-se às próximas reservas.");
       S.editEvent = null; renderAll(); break; }
     case "ev-del": S.confirm = "del-event"; renderHeader(); break;
     case "ev-del-yes": { const id = ev.id; S.confirm = null; btn.disabled = true;
@@ -1126,6 +1190,23 @@ document.addEventListener("click", async (e) => {
     case "confirm-no": S.confirm = null; renderAll(); break;
     case "venue-open": openVenue(); break;
     case "sel-clear": S.selection.clear(); updateSeats(); renderPanel(); break;
+    case "hist-all": S.showAllHist = !S.showAllHist; renderPanel(); break;
+    case "w-add": { const wf = S.waitForm || {}; const name = (wf.name || "").trim(), people = Math.max(1, Math.min(100, parseInt(wf.people, 10) || 1));
+      if (!name) { toast("Escreva o nome."); $("w-name") && $("w-name").focus(); return; }
+      btn.disabled = true;
+      await run(() => S.store.finance.addWait(ev.id, { name, contact: (wf.contact || "").trim(), people, zone: wf.zone || "", notes: (wf.notes || "").trim() }), `${name} adicionado à lista de espera.`);
+      S.waitForm = null; renderPanel(); break; }
+    case "w-st": await run(() => S.store.finance.updateWait(btn.dataset.id, { status: btn.dataset.st }), "Lista de espera atualizada."); break;
+    case "w-del": S.confirm = "wdel:" + btn.dataset.id; renderPanel(); break;
+    case "w-del-yes": S.confirm = null; await run(() => S.store.finance.deleteWait(btn.dataset.id), "Pedido apagado."); break;
+    case "w-book": { const w = S.waitlist.find(x => x.id === btn.dataset.id); if (!w) return;
+      S.form = { ...S.form, name: w.name, contact: w.contact, notes: w.notes, cats: {}, payMethod: "", fromWait: w.id };
+      S.auto = { ...S.auto, n: w.people, zone: w.zone || "any", type: "normal" };
+      S.mode = "book"; S.focus = null; S.tab = "book";
+      const r = suggest(w.people, w.zone || "any", "normal"); S.selection = new Set(r.ids);
+      renderAll();
+      toast(r.ids.length >= w.people ? `Sugestão para ${w.name}: ${formatSeats(r.ids)}. Confirme ou ajuste no mapa.` : `Só há ${r.ids.length} lugares livres para ${w.name}.`);
+      break; }
     case "auto": {
       const r = suggest(S.auto.n, S.auto.zone, S.auto.type);
       if (!r.ids.length) { toast("Não há lugares livres com essas condições."); return; }
@@ -1141,10 +1222,13 @@ document.addEventListener("click", async (e) => {
         const cats = {}; seats.forEach(id => cats[id] = selCat(id));
         const total = selTotal(seats), payMethod = canFinance() && total > 0 ? S.form.payMethod : "";
         if (payMethod && !S.cash.open) { btn.disabled = false; toast("Abra a caixa antes de registar o pagamento, ou escolha “Por pagar”."); return; }
-        const newId = await S.store.addBooking(eid, { name, contact: S.form.contact.trim(), notes: S.form.notes.trim(), seats, cats, checkedIn: false, checkedAt: null, createdAt: new Date().toISOString() });
+        const dl = formDeadline(), deadline = canFinance() && !payMethod && total > 0 && dl.on ? dl.date : null;
+        const newId = await S.store.addBooking(eid, { name, contact: S.form.contact.trim(), notes: S.form.notes.trim(), seats, cats, deadline, checkedIn: false, checkedAt: null, createdAt: new Date().toISOString() });
         let paidMsg = "";
         if (payMethod && newId) { try { await S.store.finance.pay(newId, total, payMethod, ""); paidMsg = ` · pago ${eur(total)} (${METHODS[payMethod]})`; } catch (pe) { paidMsg = " · pagamento NÃO registado: " + errMsg(pe); } }
         const keepCat = S.form.catAll;
+        const fromWait = S.form.fromWait;
+        if (fromWait && newId) { try { await S.store.finance.updateWait(fromWait, { status: "convertido", booking_id: newId }); } catch (we) {} }
         S.selection.clear(); S.form = { name: "", contact: "", notes: "", cats: {}, catAll: keepCat, payMethod: "" }; if (newId) { S.focus = newId; S.edit = null; } toast(`Reserva criada: ${name} · ${seats.length} lugar${seats.length === 1 ? "" : "es"}${paidMsg}`); renderAll();
       } catch (err) { if (err.code === "conflict") err.seats.forEach(x => S.selection.delete(x)); toast(errMsg(err)); renderAll(); }
       break; }
@@ -1160,9 +1244,18 @@ document.addEventListener("click", async (e) => {
       S.edit = null; renderPanel(); break; }
     case "focus-close": S.focus = null; S.edit = null; S.confirm = null; renderAll(); break;
     case "bk-cancel": S.confirm = "cancel:" + S.focus; renderPanel(); break;
-    case "bk-cancel-yes": case "bk-cancel-refund": { const id = S.focus, b = S.bookings.find(x => x.id === id); S.confirm = null; btn.disabled = true;
+    case "bk-release": S.confirm = "release:" + S.focus; renderPanel(); break;
+    case "dl-edit": S.dlEdit = S.focus; renderPanel(); const di = $("dl-date"); di && di.focus(); break;
+    case "dl-cancel": S.dlEdit = null; renderPanel(); break;
+    case "dl-save": case "dl-clear": { const v = act === "dl-clear" ? null : ($("dl-date").value || null);
+      if (act === "dl-save" && !v) { toast("Escolha a data do prazo."); return; }
+      await run(() => S.store.updateBooking(ev.id, S.focus, { deadline: v }), v ? `Prazo de pagamento: ${fmtD(v)}.` : "Prazo de pagamento retirado.");
+      S.dlEdit = null; renderPanel(); break; }
+    case "bk-cancel-yes": case "bk-cancel-refund": { const id = S.focus, b = S.bookings.find(x => x.id === id); const release = S.confirm === "release:" + id; S.confirm = null; btn.disabled = true;
       const rm = act === "bk-cancel-refund" ? S.refundMethod : null;
-      try { await S.store.deleteBooking(ev.id, id, rm); toast(`Reserva cancelada${b ? ": " + b.name : ""}${rm ? " · devolvidos " + eur(bookingPaid(b)) + " (" + METHODS[rm] + ")" : ""}.`); S.focus = null; }
+      try { await S.store.deleteBooking(ev.id, id, rm, release ? "prazo" : null);
+        const waiting = S.waitlist.filter(w => w.status === "aguarda" || w.status === "contactado").length;
+        toast(`${release ? "Lugares libertados" : "Reserva cancelada"}${b ? ": " + b.name : ""}${rm ? " · devolvidos " + eur(bookingPaid(b)) + " (" + METHODS[rm] + ")" : ""}.${waiting ? ` Há ${waiting} pedido${waiting === 1 ? "" : "s"} na lista de espera.` : ""}`); S.focus = null; }
       catch (err) { toast(errMsg(err)); }
       renderAll(); break; }
     case "pf-open": { const b = S.bookings.find(x => x.id === S.focus); if (!b) return; const mode = btn.dataset.pmode;
@@ -1188,6 +1281,7 @@ document.addEventListener("click", async (e) => {
     case "tk-all": openTickets(S.bookings.slice().sort((a, b) => firstPos(a) - firstPos(b)).map(b => b.id)); break;
     case "tk-close": $("ticketOverlay").hidden = true; S.tk = null; break;
     case "tk-print": printTickets(btn); break;
+    case "tk-pdf": downloadTicketsPdf(btn); break;
     case "logo-del": await run(() => S.store.setLogo(ev.id, null), "Logotipo removido."); renderHeader(); break;
     case "scan-go": { const v = S.scanInput; S.scanInput = ""; validateCode(v); break; }
     case "fin-exp-pay": exportEventPayments(); break;
@@ -1215,18 +1309,13 @@ document.addEventListener("click", async (e) => {
       btn.disabled = true;
       try { S.cashResult = await S.store.finance.closeCash(c, S.cashForm.notes); S.cashForm = null; } catch (err) { btn.disabled = false; toast(errMsg(err)); }
       renderCash(); break; }
-    case "rep-open": renderReport(); break;
-    case "rep-go": renderReport(); break;
-    case "rep-x": $("repOverlay").hidden = true; break;
-    case "rep-exp": exportReport("sum"); break;
-    case "rep-exp-mov": exportReport("mov"); break;
     case "exp-list": exportCsv("list"); break;
     case "exp-seats": exportCsv("seats"); break;
     case "venue-cancel": $("venueOverlay").hidden = true; break;
     case "venue-save": saveVenue(); break;
   }
 });
-$("newEventBtn").addEventListener("click", () => { const last = S.events[S.events.length - 1]; S.newEvent = { name: "", date: todayISO(), time: "21:00", notes: "", paper: (last && last.paper) || "80", ...pricesToForm(last && last.prices) }; renderEvents(); const n = $("ne-name"); n && n.focus(); });
+$("newEventBtn").addEventListener("click", () => { const last = S.events[S.events.length - 1]; S.newEvent = { name: "", date: todayISO(), time: "21:00", notes: "", paper: (last && last.paper) || "80", pay_days: last && last.pay_days != null ? last.pay_days : "", ...pricesToForm(last && last.prices) }; renderEvents(); const n = $("ne-name"); n && n.focus(); });
 
 /* ---------- Venue plan editor ---------- */
 function openVenue() {
@@ -1397,7 +1486,21 @@ function renderTickets() {
     <div class="card-head"><h3>${n ? n + " bilhete" + (n === 1 ? "" : "s") : "Bilhetes"}</h3><span class="small muted">Bilhete de ${PAPERS[paperOf()].w} × ${PAPERS[paperOf()].h} mm · rolo escolhido em Editar evento</span></div>
     ${body}
     <p class="small muted" style="margin:0">Imprime na impressora predefinida do computador. Se a Bilheteira foi aberta pelo atalho, imprime de imediato, sem janela de confirmação.</p>
-    <div class="row-btns"><button class="btn primary" data-act="tk-print" type="button" ${n && !tk.loading ? "" : "disabled"}>Imprimir ${n} bilhete${n === 1 ? "" : "s"}</button><button class="btn ghost" data-act="tk-close" type="button">Fechar</button></div></div>`;
+    <div class="row-btns"><button class="btn primary" data-act="tk-print" type="button" ${n && !tk.loading ? "" : "disabled"}>Imprimir ${n} bilhete${n === 1 ? "" : "s"}</button><button class="btn" data-act="tk-pdf" type="button" ${n && !tk.loading ? "" : "disabled"}>Descarregar PDF</button><button class="btn ghost" data-act="tk-close" type="button">Fechar</button></div></div>`;
+}
+async function downloadTicketsPdf(btn) {
+  const tk = S.tk, ev = curEvent(); if (!tk || !tk.items.length || !ev) return;
+  const label = btn.textContent; btn.disabled = true; btn.textContent = "A gerar…";
+  try {
+    await loadScript(LIB.pdf);
+    const { jsPDF } = window.jspdf, P = PAPERS[paperOf()];
+    const doc = new jsPDF({ unit: "mm", format: [P.w, P.h], orientation: "p", compress: true });
+    tk.items.forEach((it, i) => { if (i) doc.addPage([P.w, P.h], "p"); doc.addImage(drawTicket(ticketData(it), paperOf()).toDataURL("image/png"), "PNG", 0, 0, P.w, P.h, undefined, "FAST"); });
+    const who = tk.bids.length === 1 ? "-" + slugify(tk.items[0].holder) : "";
+    doc.save(`bilhetes-${slugify(ev.name)}${who}.pdf`);
+    toast(`${tk.items.length} bilhete${tk.items.length === 1 ? "" : "s"} guardado${tk.items.length === 1 ? "" : "s"} em PDF na pasta de transferências.`);
+  } catch (e) { toast(e && e.message === "load" ? "Não foi possível carregar o gerador de PDF. Verifique a ligação e tente de novo." : "Não foi possível gerar o PDF."); }
+  if (btn.isConnected) { btn.disabled = false; btn.textContent = label; }
 }
 async function printTickets(btn) {
   const tk = S.tk; if (!tk || !tk.items.length) return;
@@ -1587,8 +1690,9 @@ function financePanel() {
     <div class="row-btns"><button class="btn sm" data-act="x-add" type="button">Adicionar despesa</button></div></div>`;
   // payments log
   const pays = S.payments.slice().reverse();
+  const histCard = eventHistoryCard();
   html += `<div class="card"><div class="card-head"><h3>Pagamentos</h3><span class="small muted">${pays.length}</span></div>
-    <div class="paylist">${pays.length ? pays.slice(0, 80).map(p => `<div><span class="mono muted">${dt(p.created_at)}</span><span>${esc(p.booking_name)} · ${METHODS[p.method]}${p.amount_cents < 0 ? " · reembolso" : ""}</span><span class="mono num ${p.amount_cents < 0 ? "neg" : ""}">${eur(p.amount_cents)}</span></div>`).join("") : `<div class="empty">Ainda não há pagamentos neste evento.</div>`}</div></div>`;
+    <div class="paylist">${pays.length ? pays.slice(0, 80).map(p => `<div><span class="mono muted">${dt(p.created_at)}</span><span>${esc(p.booking_name)} · ${METHODS[p.method]}${p.amount_cents < 0 ? " · reembolso" : ""}</span><span class="mono num ${p.amount_cents < 0 ? "neg" : ""}">${eur(p.amount_cents)}</span></div>`).join("") : `<div class="empty">Ainda não há pagamentos neste evento.</div>`}</div></div>` + histCard;
   return html;
 }
 /* ---------- Event report (PDF, A4) ---------- */
@@ -1693,8 +1797,15 @@ async function eventPdf(btn) {
 
     const dueRows = S.bookings.filter(b => bookingDue(b) > 0).sort((a, b) => a.name.localeCompare(b.name, "pt"));
     table("Reservas por pagar", [{ t: "Nome", w: .30 }, { t: "Lugares", w: .30 }, { t: "Total", w: .13, r: 1 }, { t: "Pago", w: .13, r: 1 }, { t: "Em falta", w: .14, r: 1 }],
-      dueRows.map(b => [b.name + (b.contact ? "\n" + b.contact : ""), formatSeats(b.seats || []), eur(bookingTotal(b)), eur(bookingPaid(b)), eur(bookingDue(b))]),
+      dueRows.map(b => [b.name + (b.contact ? "\n" + b.contact : "") + (b.deadline ? "\nPagar até " + fmtD(b.deadline) + (isLate(b) ? " (expirado)" : "") : ""), formatSeats(b.seats || []), eur(bookingTotal(b)), eur(bookingPaid(b)), eur(bookingDue(b))]),
       dueRows.length ? ["Total", "", "", "", eur(f.due)] : null);
+
+    const waitAct = S.waitlist.filter(w => w.status === "aguarda" || w.status === "contactado");
+    if (waitAct.length) table("Lista de espera", [{ t: "Nome", w: .34 }, { t: "Pessoas", w: .12, r: 1 }, { t: "Zona", w: .18 }, { t: "Estado", w: .16 }, { t: "Desde", w: .20 }],
+      waitAct.map(w => [w.name + (w.contact ? "\n" + w.contact : ""), w.people, w.zone ? ((S.layout.zones.find(z => z.id === w.zone) || {}).name || w.zone) : "Qualquer", WAIT_ST[w.status], dt(w.created_at)]), null);
+
+    table("Histórico de alterações", [{ t: "Data/hora", w: .17 }, { t: "Por", w: .21 }, { t: "Reserva", w: .17 }, { t: "Alteração", w: .45 }],
+      S.audit.map(e => [dt(e.created_at), e.actor, e.booking_name || "—", histText(e)]), null);
 
     // Footer on every page
     const pages = doc.getNumberOfPages(), who = S.me ? S.me.email : "";
@@ -1707,6 +1818,68 @@ async function eventPdf(btn) {
   } catch (e) { toast(e && e.message === "load" ? "Não foi possível carregar o gerador de PDF. Verifique a ligação e tente de novo." : "Não foi possível gerar o relatório."); console.error(e); }
   if (btn.isConnected) { btn.disabled = false; btn.textContent = label; }
 }
+/* ---------- Change history ---------- */
+const WAIT_ST = { aguarda: "Aguarda", contactado: "Contactado", convertido: "Reservou", desistiu: "Desistiu" };
+const seatsTxt = (a) => a && a.length ? formatSeats(a) : "—";
+function histText(e) {
+  const d = e.details || {}, m = (k) => METHODS[k] || k || "";
+  switch (e.action) {
+    case "booking_created": return `Reserva criada: ${seatsTxt(d.seats)} · ${eur(d.total)}${d.deadline ? " · pagar até " + fmtD(d.deadline) : ""}`;
+    case "seats_changed": return `Lugares alterados${d.added && d.added.length ? " · acrescentados " + seatsTxt(d.added) : ""}${d.removed && d.removed.length ? " · retirados " + seatsTxt(d.removed) : ""}`;
+    case "category_changed": return "Tipo de bilhete: " + (d.changes || []).map(c => `${seatName(c.seat)} ${CATS[c.from] || c.from} → ${CATS[c.to] || c.to} (${eur(c.price)})`).join("; ");
+    case "booking_edited": return "Dados alterados: " + Object.entries(d.changes || {}).map(([k, v]) => `${{ name: "nome", contact: "contacto", notes: "notas" }[k] || k} "${v[0] || "—"}" → "${v[1] || "—"}"`).join("; ");
+    case "deadline_changed": return !d.from ? `Prazo de pagamento definido: ${fmtD(d.to)}` : !d.to ? `Prazo de pagamento retirado (era ${fmtD(d.from)})` : `Prazo de pagamento alterado: ${fmtD(d.from)} → ${fmtD(d.to)}`;
+    case "booking_cancelled": case "released_deadline":
+      return `${e.action === "released_deadline" ? "Lugares libertados por prazo expirado" : "Reserva cancelada"}: ${seatsTxt(d.seats)}${d.refunded ? ` · devolvidos ${eur(d.refunded)} (${m(d.method)})` : d.paid ? ` · sem devolver ${eur(d.paid)}` : ""}`;
+    case "payment": return `Pagamento recebido: ${eur(d.amount)} (${m(d.method)})`;
+    case "refund": return `Reembolso: ${eur(d.amount)} (${m(d.method)})${d.note ? " · " + d.note : ""}`;
+    case "checkin": return "Entrada registada manualmente (toda a reserva)";
+    case "checkin_undone": return "Entrada anulada";
+    case "expense_added": return `Despesa registada: ${d.description} (${d.category}) · ${eur(d.amount)}`;
+    case "expense_deleted": return `Despesa apagada: ${d.description} · ${eur(d.amount)}`;
+    case "event_edited": return "Evento alterado: " + Object.entries(d.changes || {}).map(([k, v]) => k === "prices" ? `preços ${pricesTxt(v[0])} → ${pricesTxt(v[1])}` : k === "date" ? `data ${fmtD(v[0])} → ${fmtD(v[1])}` : k === "pay_days" ? `prazo por defeito ${v[0] ?? "—"} → ${v[1] ?? "—"} dias` : `${{ name: "nome", time: "hora" }[k] || k} "${v[0] || "—"}" → "${v[1] || "—"}"`).join("; ");
+    case "waitlist_added": return `Lista de espera: pedido para ${d.people} pessoa${d.people === 1 ? "" : "s"}${d.zone ? " (" + ((S.layout.zones.find(z => z.id === d.zone) || {}).name || d.zone) + ")" : ""}`;
+    case "waitlist_status": return `Lista de espera: ${WAIT_ST[d.from] || d.from} → ${WAIT_ST[d.to] || d.to}`;
+    case "waitlist_removed": return "Lista de espera: pedido apagado";
+    default: return e.action;
+  }
+}
+function pricesTxt(pr) { if (!pr) return "—"; return S.layout.zones.map(z => `${z.name} ${eurIn((pr[z.id] || {}).socio || 0)}/${eurIn((pr[z.id] || {}).nao_socio || 0)}`).join(", "); }
+const histRow = (e, showName) => `<div><span class="mono muted">${dt(e.created_at)}</span><span>${showName && e.booking_name ? `<b>${esc(e.booking_name)}</b> · ` : ""}${esc(histText(e))}</span><span class="meta">${esc(e.actor)}</span></div>`;
+function bookingHistory(fb) {
+  const rows = S.audit.filter(e => e.booking_id === fb.id);
+  if (!rows.length) return "";
+  return `<details class="histbox"><summary>Histórico (${rows.length})</summary><div class="hist">${rows.slice().reverse().map(e => histRow(e, false)).join("")}</div></details>`;
+}
+function eventHistoryCard() {
+  const rows = S.audit.slice().reverse(), all = S.showAllHist;
+  return `<div class="card"><div class="card-head"><h3>Histórico de alterações</h3><span class="small muted">${rows.length}</span></div>
+    ${rows.length ? `<div class="hist">${rows.slice(0, all ? rows.length : 30).map(e => histRow(e, true)).join("")}</div>${rows.length > 30 ? `<button class="linkbtn small" data-act="hist-all" type="button">${all ? "Mostrar menos" : `Mostrar tudo (${rows.length})`}</button>` : ""}` : `<div class="empty">Ainda não há alterações registadas neste evento.</div>`}</div>`;
+}
+
+/* ---------- Waiting list ---------- */
+function freeSeats(zone) { const bl = blockedSet(); let n = 0; S.layout.idx.forEach((s, id) => { if ((!zone || s.zone === zone) && !S.seatOwner.has(id) && !bl.has(id)) n++; }); return n; }
+function waitPanel() {
+  const wf = S.waitForm || { name: "", contact: "", people: "2", zone: "", notes: "" };
+  const active = S.waitlist.filter(w => w.status === "aguarda" || w.status === "contactado"), done = S.waitlist.filter(w => w.status === "convertido" || w.status === "desistiu");
+  const zoneName = (z) => z ? ((S.layout.zones.find(x => x.id === z) || {}).name || z) : "Qualquer zona";
+  const row = (w) => { const fits = (w.status === "aguarda" || w.status === "contactado") && freeSeats(w.zone) >= w.people;
+    return `<div class="wl ${fits ? "fits" : ""}"><div style="min-width:0"><strong>${esc(w.name)}</strong> <span class="pchip ${w.status === "aguarda" ? "due" : w.status === "convertido" ? "ok" : "free"}">${WAIT_ST[w.status]}</span>
+      <div class="small muted">${w.people} pessoa${w.people === 1 ? "" : "s"} · ${esc(zoneName(w.zone))}${w.contact ? " · " + esc(w.contact) : ""} · desde ${dt(w.created_at)}</div>${w.notes ? `<div class="small">${esc(w.notes)}</div>` : ""}</div>
+      <span class="row-btns">${w.status === "aguarda" || w.status === "contactado" ? `<button class="btn primary sm" data-act="w-book" data-id="${esc(w.id)}" type="button">Reservar</button>${w.status === "aguarda" ? `<button class="btn sm" data-act="w-st" data-st="contactado" data-id="${esc(w.id)}" type="button">Contactado</button>` : ""}<button class="btn ghost sm" data-act="w-st" data-st="desistiu" data-id="${esc(w.id)}" type="button">Desistiu</button>` : ""}
+      ${S.confirm === "wdel:" + w.id ? `<button class="btn danger sm" data-act="w-del-yes" data-id="${esc(w.id)}" type="button">Apagar</button>` : `<button class="btn ghost sm" data-act="w-del" data-id="${esc(w.id)}" type="button" aria-label="Apagar pedido">✕</button>`}</span></div>`; };
+  return `<div class="card"><div class="card-head"><h3>Lista de espera</h3><span class="small muted">${freeSeats()} lugares livres</span></div>
+    ${active.length ? active.map(row).join("") : `<div class="empty">Ninguém em espera neste evento.</div>`}
+    ${done.length ? `<details class="histbox"><summary>Concluídos (${done.length})</summary>${done.map(row).join("")}</details>` : ""}</div>
+    <div class="card"><div class="card-head"><h3>Novo pedido</h3></div>
+    <div class="field"><label for="w-name">Nome</label><input id="w-name" data-f="waitForm.name" value="${esc(wf.name)}" autocomplete="off"></div>
+    <div class="field"><label for="w-contact">Contacto</label><input id="w-contact" data-f="waitForm.contact" value="${esc(wf.contact)}" placeholder="Telefone ou email" autocomplete="off"></div>
+    <div class="grid2"><div class="field"><label for="w-people">Pessoas</label><input id="w-people" type="number" min="1" max="100" data-f="waitForm.people" value="${esc(wf.people)}"></div>
+      <div class="field"><label for="w-zone">Zona</label><select id="w-zone" data-f="waitForm.zone"><option value="">Qualquer</option>${S.layout.zones.map(z => `<option value="${esc(z.id)}" ${wf.zone === z.id ? "selected" : ""}>${esc(z.name)}</option>`).join("")}</select></div></div>
+    <div class="field"><label for="w-notes">Notas</label><input id="w-notes" data-f="waitForm.notes" value="${esc(wf.notes)}" placeholder="Opcional"></div>
+    <div class="row-btns"><button class="btn sm" data-act="w-add" type="button">Adicionar à lista</button></div></div>`;
+}
+
 function exportEventPayments() {
   const ev = curEvent(); if (!ev) return;
   const rows = [["Data", "Reserva", "Tipo", "Método", "Valor (€)", "Registado por", "Nota"]];
@@ -1769,50 +1942,6 @@ function exportCash() {
   const rows = [["Abertura", "Fecho", "Pessoa", "Fundo inicial (€)", ...Object.values(METHODS).map(m => m + " (€)"), "Esperado em dinheiro (€)", "Contado (€)", "Diferença (€)", "Notas"]];
   ss.forEach(x => { const t = cashTotals(pays.filter(p => p.session_id === x.id)); rows.push([dt(x.opened_at), dt(x.closed_at), x.opened_by, money(x.opening_cents), ...Object.keys(METHODS).map(m => money(t[m])), money(x.expected_cents), money(x.counted_cents), money(x.counted_cents - x.expected_cents), x.notes]); });
   saveCsv(`fechos-de-caixa-${todayISO()}.csv`, rows);
-}
-
-/* ---------- General summary ---------- */
-S.rep = { from: new Date().getFullYear() + "-01-01", to: new Date().getFullYear() + "-12-31" };
-async function renderReport() {
-  const o = $("repOverlay"), r = S.rep;
-  o.innerHTML = `<div class="card" role="dialog" aria-label="Relatórios" style="width:min(980px,100%)"><div class="card-head"><h3>Resumo financeiro</h3><button class="btn ghost sm" data-act="rep-x" type="button">Fechar</button></div>
-    <div class="row-btns"><div class="field"><label for="rep-from">De</label><input type="date" id="rep-from" data-f="rep.from" value="${esc(r.from)}"></div><div class="field"><label for="rep-to">Até</label><input type="date" id="rep-to" data-f="rep.to" value="${esc(r.to)}"></div>
-    <button class="btn sm" data-act="rep-go" type="button" style="align-self:flex-end">Atualizar</button></div>
-    <div id="repBody" class="small muted">A carregar…</div></div>`;
-  o.hidden = false;
-  try {
-    const rows = await S.store.finance.summary(r.from, r.to);
-    const ids = rows.map(x => x.event_id);
-    const pays = await S.store.finance.periodPayments(ids);
-    S.repData = { rows, pays };
-    const T = rows.reduce((a, x) => { ["tickets", "socio", "nao_socio", "convidado", "sold_cents", "received_cents", "refunded_cents", "expenses_cents"].forEach(k => a[k] = (a[k] || 0) + Number(x[k])); return a; }, {});
-    const bal = (x) => Number(x.received_cents) - Number(x.refunded_cents) - Number(x.expenses_cents);
-    const byM = cashTotals(pays);
-    const b = $("repBody"); if (!b) return; b.className = "";
-    b.innerHTML = !rows.length ? `<p class="muted" style="margin:0">Não há eventos neste período.</p>` : `
-      <div class="kpis"><div><span>Eventos</span><b>${rows.length}</b><small>${T.tickets} bilhetes</small></div><div><span>Vendido</span><b>${eur(T.sold_cents)}</b><small>&nbsp;</small></div>
-      <div><span>Recebido</span><b>${eur(T.received_cents - T.refunded_cents)}</b><small>${T.refunded_cents ? eur(T.refunded_cents) + " devolvidos" : "&nbsp;"}</small></div>
-      <div><span>Despesas</span><b>${eur(T.expenses_cents)}</b><small>&nbsp;</small></div><div class="${bal(T) < 0 ? "is-neg" : "is-pos"}"><span>Saldo</span><b>${eur(bal(T))}</b><small>&nbsp;</small></div></div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Data</th><th>Evento</th><th class="num">Sócio</th><th class="num">Não sócio</th><th class="num">Convid.</th><th class="num">Vendido</th><th class="num">Recebido</th><th class="num">Despesas</th><th class="num">Saldo</th></tr></thead><tbody>
-      ${rows.map(x => `<tr><td class="mono">${fmtDate(x.date, { day: "2-digit", month: "2-digit", year: "2-digit" })}</td><td>${esc(x.name)}</td><td class="num">${x.socio}</td><td class="num">${x.nao_socio}</td><td class="num">${x.convidado}</td><td class="num">${eur(x.sold_cents)}</td><td class="num">${eur(x.received_cents - x.refunded_cents)}</td><td class="num">${eur(x.expenses_cents)}</td><td class="num ${bal(x) < 0 ? "neg" : ""}">${eur(bal(x))}</td></tr>`).join("")}
-      <tr class="tot"><td></td><td>Total</td><td class="num">${T.socio}</td><td class="num">${T.nao_socio}</td><td class="num">${T.convidado}</td><td class="num">${eur(T.sold_cents)}</td><td class="num">${eur(T.received_cents - T.refunded_cents)}</td><td class="num">${eur(T.expenses_cents)}</td><td class="num">${eur(bal(T))}</td></tr></tbody></table></div>
-      <div class="tbl-wrap"><table class="tbl" style="max-width:420px"><thead><tr><th>Método</th><th class="num">Recebido (líquido)</th></tr></thead><tbody>${Object.keys(METHODS).map(m => `<tr><td>${METHODS[m]}</td><td class="num">${eur(byM[m])}</td></tr>`).join("")}</tbody></table></div>
-      <div class="row-btns"><button class="btn sm" data-act="rep-exp" type="button">Exportar resumo</button><button class="btn sm" data-act="rep-exp-mov" type="button">Exportar movimentos</button></div>`;
-  } catch (e) { const b = $("repBody"); if (b) b.textContent = errMsg(e); }
-}
-async function exportReport(kind) {
-  const d = S.repData; if (!d) return;
-  if (kind === "sum") {
-    const rows = [["Data", "Hora", "Evento", "Bilhetes", "Sócio", "Não sócio", "Convidado", "Vendido (€)", "Recebido (€)", "Devolvido (€)", "Despesas (€)", "Saldo (€)"]];
-    d.rows.forEach(x => rows.push([x.date, x.time, x.name, x.tickets, x.socio, x.nao_socio, x.convidado, money(x.sold_cents), money(x.received_cents), money(x.refunded_cents), money(x.expenses_cents), money(x.received_cents - x.refunded_cents - x.expenses_cents)]));
-    saveCsv(`resumo-financeiro-${S.rep.from}-a-${S.rep.to}.csv`, rows); return;
-  }
-  const names = new Map(d.rows.map(x => [x.event_id, x.name]));
-  const xs = await S.store.finance.periodExpenses(d.rows.map(x => x.event_id));
-  const rows = [["Data", "Evento", "Movimento", "Descrição", "Método/Categoria", "Valor (€)", "Registado por"]];
-  d.pays.forEach(p => rows.push([dt(p.created_at), names.get(p.event_id) || "", p.amount_cents < 0 ? "Reembolso" : "Pagamento", p.booking_name, METHODS[p.method], money(p.amount_cents), p.created_by]));
-  xs.forEach(x => rows.push([x.date, names.get(x.event_id) || "", "Despesa", x.description, x.category, money(-x.amount_cents), x.created_by]));
-  saveCsv(`movimentos-${S.rep.from}-a-${S.rep.to}.csv`, rows);
 }
 
 async function exportCsv(kind) {
@@ -1966,7 +2095,7 @@ async function showPending(session) {
 }
 function renderWho() {
   const n = S.pendingCount || 0;
-  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(S.me.name || S.me.email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="cash-open-ui" id="cashBtn">Caixa</button><button class="btn ghost sm" type="button" data-act="rep-open">Relatórios</button><button class="btn ghost sm" type="button" data-act="staff-open">Equipa${n ? ` <span class="badge" title="${n} pedido${n === 1 ? "" : "s"} de acesso">${n}</span>` : ""}</button>` : ""}<button class="btn ghost sm" type="button" id="chpass">Palavra-passe</button><button class="btn ghost sm" type="button" id="logout">Sair</button>`;
+  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(S.me.name || S.me.email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="cash-open-ui" id="cashBtn">Caixa</button><button class="btn ghost sm" type="button" data-act="staff-open">Equipa${n ? ` <span class="badge" title="${n} pedido${n === 1 ? "" : "s"} de acesso">${n}</span>` : ""}</button>` : ""}<button class="btn ghost sm" type="button" id="chpass">Palavra-passe</button><button class="btn ghost sm" type="button" id="logout">Sair</button>`;
   $("logout").onclick = () => sb.auth.signOut().then(() => location.replace(APP_URL));
   $("chpass").onclick = async () => { const { data } = await sb.auth.getSession(); renderNewPassword(data.session, "change", () => { $("gate").hidden = true; }); };
   if (S.me.admin) renderCashBtn();
@@ -1994,7 +2123,7 @@ async function enter(session) {
   $("gate").hidden = true;
   if (!S.store) start(makeSupaStore(sb));
   if (S.me.admin && S.store.finance && !S.unsubC) S.unsubC = S.store.finance.onCash((c) => { S.cash = c; renderCashBtn(); if (!$("cashOverlay").hidden && !S.cashResult) keepFocus(() => renderCash(false)); keepFocus(renderPanel); });
-  if (S.eventId && canFinance() && !S.unsubF) { const id = S.eventId; S.unsubF = S.store.finance.onEvent(id, (d) => { S.payments = d.payments; S.expenses = d.expenses; keepFocus(() => { renderTabs(); renderPanel(); }); }); }
+  if (S.eventId && canFinance() && !S.unsubF) { const id = S.eventId; S.unsubF = S.store.finance.onEvent(id, (d) => { S.payments = d.payments; S.expenses = d.expenses; S.waitlist = d.waitlist || []; S.audit = d.audit || []; updateSeats(); keepFocus(() => { renderTabs(); renderPanel(); }); }); }
   if (S.me.admin && !S.reqChannel) {
     S.reqChannel = sb.channel("pedidos").on("postgres_changes", { event: "*", schema: "public", table: "access_requests" }, () => refreshPending()).subscribe();
     setInterval(() => { if (document.visibilityState === "visible") refreshPending(); }, 60000);
