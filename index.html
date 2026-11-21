@@ -1,0 +1,1428 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bilheteira Plebeus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: theatre box-office console — events rail | seat map with stage | booking & door panel */
+:root{
+  --bg:#f2f1f4; --surface:#ffffff; --sunk:#e9e7ed; --ink:#1c1922; --muted:#6a6474; --line:#dcd8e2;
+  --velvet:#9a1d3c; --velvet-ink:#ffffff; --brass:#a87414; --acc:#2a62a6; --ok:#2e7a4d; --warn:#b4531a;
+  --seat-free:#ffffff; --seat-line:#b9b3c3;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --seat:27px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#141218; --surface:#1e1b24; --sunk:#26222d; --ink:#ece8f1; --muted:#9e97aa; --line:#34303c;
+  --velvet:#d24a6d; --velvet-ink:#1a0a10; --brass:#d8a33f; --acc:#6ea6ea; --ok:#56b582; --warn:#e08a4f;
+  --seat-free:#2a2631; --seat-line:#4d4757; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#141218; --surface:#1e1b24; --sunk:#26222d; --ink:#ece8f1; --muted:#9e97aa; --line:#34303c;
+  --velvet:#d24a6d; --velvet-ink:#1a0a10; --brass:#d8a33f; --acc:#6ea6ea; --ok:#56b582; --warn:#e08a4f;
+  --seat-free:#2a2631; --seat-line:#4d4757; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 40px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.mono{font-family:var(--f-mono)}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+
+.top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 auto 14px;max-width:1500px}
+.top h1{font-size:24px;font-weight:700}
+.top h1 span{color:var(--velvet)}
+.top .sub{color:var(--muted)}
+.banner{max-width:1500px;margin:0 auto 12px;padding:8px 12px;border-radius:8px;background:var(--sunk);color:var(--muted);font-size:13px}
+.banner[hidden]{display:none}
+
+.app{display:grid;gap:16px;max-width:1500px;margin:0 auto;grid-template-columns:minmax(0,1fr)}
+@media (min-width:1150px){ .app{grid-template-columns:230px minmax(0,1fr) 350px;align-items:start} }
+
+/* Events rail */
+.rail{display:flex;flex-direction:column;gap:10px;min-width:0}
+.rail-head{display:flex;justify-content:space-between;align-items:center}
+.events{display:flex;flex-direction:column;gap:6px}
+@media (max-width:1149px){ .events{flex-direction:row;overflow-x:auto;padding-bottom:4px} .ev{min-width:200px} }
+.ev{display:flex;gap:10px;align-items:center;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid transparent;background:transparent}
+.ev:hover{background:var(--sunk)}
+.ev.on{background:var(--surface);border-color:var(--line)}
+.ev.past{opacity:.6}
+.ev .d{display:flex;flex-direction:column;align-items:center;justify-content:center;width:42px;height:44px;border-radius:6px;background:var(--sunk);flex:none;line-height:1}
+.ev.on .d{background:var(--velvet);color:var(--velvet-ink)}
+.ev .d b{font-family:var(--f-display);font-size:18px}
+.ev .d small{font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.ev .t{min-width:0}
+.ev .t strong{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev .t span{color:var(--muted);font-size:12px}
+.rail .group{margin-top:6px}
+
+/* Cards and controls */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.btn{border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:7px;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--velvet);border-color:var(--velvet);color:var(--velvet-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);background:var(--sunk)}
+.btn.danger{color:var(--velvet);border-color:var(--velvet)}
+.btn.sm{padding:3px 9px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--bg);border-radius:7px;padding:7px 9px;width:100%}
+.field textarea{resize:vertical;min-height:54px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:6px 11px;font-size:13px;font-weight:500;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+
+/* Main / header */
+.main{display:flex;flex-direction:column;gap:12px;min-width:0}
+.evhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.evhead h2{font-size:22px;font-weight:700}
+.stats{display:flex;gap:18px;flex-wrap:wrap}
+.stat b{display:block;font-family:var(--f-display);font-size:20px;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.occ{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden;display:flex}
+.occ i{display:block;height:100%}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend .seat{cursor:default;width:15px;height:15px}
+
+/* Seat map */
+.map-scroll{overflow-x:auto;padding-bottom:6px}
+.map{min-width:max-content;margin:0 auto;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;user-select:none;-webkit-user-select:none}
+.stage{width:min(70%,520px);min-width:240px;height:34px;margin-bottom:18px;border-radius:0 0 50% 50% / 0 0 100% 100%;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:700;letter-spacing:.4em;font-size:12px}
+.zone-label{display:flex;align-items:center;gap:10px;width:100%;margin:16px 0 6px;color:var(--muted)}
+.zone-label::before,.zone-label::after{content:"";flex:1;border-top:1px dashed var(--line)}
+.zone-label.first{margin-top:0}
+.srow{display:flex;align-items:center;justify-content:center;gap:3px}
+.rl{width:20px;text-align:center;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.gap{width:var(--seat);height:var(--seat);flex:none}
+.seat{width:var(--seat);height:var(--seat);border-radius:6px 6px 3px 3px;border:1.5px solid var(--seat-line);background:var(--seat-free);padding:0;position:relative;flex:none;transition:transform .08s;font:500 10px/1 var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.seat.is-booked,.seat.is-in{color:var(--velvet-ink)}
+.seat.is-sel{color:var(--bg)}
+.legend .seat{font-size:0}
+.seat:hover{transform:translateY(-1px)}
+.seat.t-acc{border-color:var(--acc);border-width:2px}
+.seat.t-acc::after{content:"";position:absolute;left:50%;bottom:2px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--acc)}
+.seat.t-vip{border-color:var(--brass);border-width:2px}
+.seat.t-vip::after{content:"";position:absolute;left:2px;right:2px;top:2px;height:3px;border-radius:2px;background:var(--brass)}
+.seat.is-booked{background:var(--velvet);border-color:var(--velvet)}
+.seat.is-in{background:var(--ok);border-color:var(--ok)}
+.seat.is-booked::after,.seat.is-in::after{opacity:.7;background:var(--surface)}
+.seat.is-sel{background:var(--ink);border-color:var(--ink)}
+.seat.is-sel::after{background:var(--bg)}
+.seat.is-blocked{background:repeating-linear-gradient(45deg,var(--seat-line) 0 2px,transparent 2px 5px);border-color:var(--seat-line);cursor:not-allowed}
+.seat.is-hl{outline:2.5px solid var(--brass);outline-offset:1px;z-index:1}
+.seat.is-dim{opacity:.35}
+.mode-block .seat:not(.is-booked):not(.is-in),.mode-types .seat{cursor:crosshair}
+@media (prefers-reduced-motion: reduce){ .seat{transition:none} .seat:hover{transform:none} }
+
+/* Panel */
+.panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:transparent;padding:8px 12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--velvet)}
+.tabs .count{font-family:var(--f-mono);font-size:11px;background:var(--sunk);padding:1px 6px;border-radius:9px;margin-left:4px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-family:var(--f-mono);font-size:12px;background:var(--sunk);padding:2px 7px;border-radius:5px}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card-head h3{font-size:16px;font-weight:700}
+.status{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px}
+.status.in{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.status.out{background:var(--sunk);color:var(--muted)}
+.list{display:flex;flex-direction:column}
+.bk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line)}
+.bk:last-child{border-bottom:0}
+.bk .who{background:none;border:0;padding:0;text-align:left;min-width:0}
+.bk .who strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk .who span{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.bk.in .who strong{color:var(--ok)}
+.empty{padding:18px 6px;text-align:center;color:var(--muted)}
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--velvet) 10%,transparent)}
+.confirm p{margin:0;flex:1 1 160px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:13px;max-width:calc(100vw - 32px);box-shadow:0 6px 24px rgba(0,0,0,.2);z-index:20}
+.toast[hidden]{display:none}
+.overlay{position:fixed;inset:0;background:rgba(10,8,14,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:15}
+.overlay[hidden]{display:none}
+.overlay .card{width:min(520px,100%);max-height:90vh;overflow:auto}
+.zone-cfg{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.check{display:flex;align-items:center;gap:6px;font-size:13px}
+hr{border:0;border-top:1px solid var(--line);margin:2px 0;width:100%}
+.evlogo{height:44px;max-width:120px;object-fit:contain;background:#fff;border-radius:6px;padding:3px;border:1px solid var(--line)}
+.evtitle{display:flex;gap:12px;align-items:center;min-width:0}
+.tk-grid{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;padding:14px;background:var(--sunk);border-radius:8px;max-height:52vh;overflow:auto}
+.tk-grid img{width:190px;height:auto;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);image-rendering:auto}
+.tk-grid.w58 img{width:140px}
+.scan-in input{font:500 18px var(--f-mono);letter-spacing:.06em;padding:12px}
+.verdict{border-radius:10px;padding:14px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:center}
+.verdict .ic{grid-row:span 2;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 24px var(--f-display);color:#fff}
+.verdict b{font:700 18px var(--f-display)}
+.verdict span{font-size:13px}
+.verdict.ok{background:color-mix(in srgb,var(--ok) 15%,transparent)} .verdict.ok .ic{background:var(--ok)}
+.verdict.used{background:color-mix(in srgb,var(--warn) 16%,transparent)} .verdict.used .ic{background:var(--warn)}
+.verdict.bad{background:color-mix(in srgb,var(--velvet) 13%,transparent)} .verdict.bad .ic{background:var(--velvet)}
+.log{display:flex;flex-direction:column;font-size:12px}
+.log div{display:grid;grid-template-columns:44px 14px minmax(0,1fr);gap:6px;padding:4px 0;border-bottom:1px solid var(--line)}
+.log div:last-child{border-bottom:0}
+.dot{width:8px;height:8px;border-radius:50%;margin-top:5px}
+.dot.ok{background:var(--ok)} .dot.used{background:var(--warn)} .dot.bad{background:var(--velvet)}
+
+/* standalone extras */
+body{margin:0}
+.top .spacer{flex:1}
+.who{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:30}
+.gate[hidden]{display:none}
+.gate .card{width:min(400px,100%)}
+.gate h2{font-size:24px}
+.gate h2 span{color:var(--velvet)}
+.staff-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.staff-row span{overflow:hidden;text-overflow:ellipsis}
+#printArea{display:none}
+.role-pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:9px;background:var(--sunk);color:var(--ink)}
+.role-pill.admin{background:var(--velvet);color:var(--velvet-ink)}
+body.role-user #mapCard{display:none}
+@media (min-width:1150px){ body.role-user .app{grid-template-columns:230px minmax(0,1fr) minmax(0,1.2fr)} }
+.staff-row select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px}
+@media print{
+  body{background:#fff;padding:0;margin:0}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block}
+  #printArea img{display:block;margin:0 auto;break-after:page;page-break-after:always}
+  #printArea img:last-child{break-after:auto;page-break-after:auto}
+}
+</style>
+<style id="pageStyle"></style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Bilheteira <span>Plebeus</span></h1>
+  <span class="sub">Reservas e lugares do auditório</span>
+  <span class="spacer"></span>
+  <div class="who" id="who"></div>
+</header>
+<div class="banner" id="banner" hidden></div>
+
+<div class="app">
+  <aside class="rail">
+    <div class="rail-head"><span class="label">Eventos</span><button class="btn sm" id="newEventBtn" type="button">+ Novo evento</button></div>
+    <div id="newEventBox"></div>
+    <div id="eventsList"></div>
+  </aside>
+
+  <section class="main">
+    <div class="card" id="evHeader"></div>
+    <div class="card" id="mapCard">
+      <div class="toolbar">
+        <div class="row-btns" id="modeBar"></div>
+        <div class="legend">
+          <span><i class="seat"></i>Livre</span>
+          <span><i class="seat is-sel"></i>Selecionado</span>
+          <span><i class="seat is-booked"></i>Reservado</span>
+          <span><i class="seat is-in"></i>Entrou</span>
+          <span><i class="seat is-blocked"></i>Bloqueado</span>
+          <span><i class="seat t-acc"></i>Mob. reduzida</span>
+          <span><i class="seat t-vip"></i>VIP</span>
+        </div>
+      </div>
+      <div class="map-scroll"><div class="map" id="map"></div></div>
+      <p class="small muted" id="mapHint" style="margin:0"></p>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="tabs" id="tabs"></div>
+    <div id="panelBody" class="panel"></div>
+  </aside>
+</div>
+
+<div class="overlay" id="venueOverlay" hidden></div>
+<div class="overlay" id="ticketOverlay" hidden></div>
+<div class="toast" id="toast" hidden></div>
+<div class="overlay" id="staffOverlay" hidden></div>
+<div class="gate" id="gate"><div class="card" id="gateCard"><p class="muted" style="margin:0">A abrir…</p></div></div>
+<div id="printArea"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(() => {
+"use strict";
+/* Ligação ao Supabase (chave publicável: segura, o acesso é controlado pelas regras da base de dados) */
+const SUPABASE_URL = "https://fkztilsqywacdboyfnqd.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrenRpbHNxeXdhY2Rib3lmbnFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMzk0NzQsImV4cCI6MjEwODcxNTQ3NH0.Kziq4FXBd7j-GqL9BygLKAKx989Ym-P6N0AwgVzcJps";
+const ROWS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const PLATEIA_ROW = "18-2:2 _ _ 1-17:2";
+const DEFAULT_VENUE = {
+  zones: [
+    { id: "P", name: "Plateia", rows: "ABCDEFGHI".split("").map(l => ({ label: l, items: PLATEIA_ROW })) },
+    { id: "B", name: "Balcão", rows: [
+      { label: "J", items: "20-1" }, { label: "K", items: "20-1" }, { label: "L", items: "20-1" },
+      { label: "M", items: "16-14 _ _ _ _ 13-1" } ] }
+  ],
+  types: {}
+};
+const pad = (n) => String(n).padStart(2, "0");
+const ALPH = "ABCDEFGHJKLMNPQRSTUVWX23456789";
+function evPrefix(id) { let h = 2166136261 >>> 0; for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } let s = ""; for (let i = 0; i < 4; i++) { s += ALPH[h % ALPH.length]; h = Math.floor(h / ALPH.length); } return s; }
+function randCode(n) { const a = new Uint32Array(n); crypto.getRandomValues(a); return Array.from(a, x => ALPH[x % ALPH.length]).join(""); }
+function makeCode(evId, seatId) { const p = seatId.split("-"); return evPrefix(evId) + p[0] + p[1] + pad(p[2]) + randCode(4); }
+const prettyCode = (c) => c.length > 8 ? `${c.slice(0, 4)} ${c.slice(4, -4)} ${c.slice(-4)}` : c;
+const seatIn = (b, id) => !!(b && ((b.entered && b.entered[id]) || (b.checkedIn && !b.entered)));
+const enteredCount = (b) => (b.seats || []).filter(id => seatIn(b, id)).length;
+const scriptCache = {};
+function loadScript(src) {
+  return scriptCache[src] = scriptCache[src] || new Promise((ok, fail) => { const el = document.createElement("script"); el.src = src; el.onload = ok; el.onerror = () => { delete scriptCache[src]; fail(new Error("load")); }; document.head.appendChild(el); });
+}
+const LIB = {
+  pdf: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+  barcode: "https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js",
+  zxing: "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"
+};
+function loadImage(src) { return new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; }); }
+function isObj(v) { return v && typeof v === "object" && !Array.isArray(v); }
+function deepMerge(a, b) { const o = { ...(isObj(a) ? a : {}) }; for (const k in b) o[k] = isObj(b[k]) && isObj(o[k]) ? deepMerge(o[k], b[k]) : b[k]; return o; }
+const TYPE_NAMES = { normal: "Normal", acc: "Mobilidade reduzida", vip: "VIP" };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const todayISO = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+/* ---------- Layout ---------- */
+/* Row syntax: "18-2:2" = 18 to 2 in steps of 2, "20-1" = 20 to 1, "7" = single seat, "_" = empty slot (aisle). Listed left to right as seen from the stage plan. */
+function parseRow(str) {
+  const out = [];
+  for (const tok of String(str || "").trim().split(/\s+/).filter(Boolean)) {
+    if (/^_+$/.test(tok)) { for (let i = 0; i < tok.length; i++) out.push(null); continue; }
+    const m = tok.match(/^(\d{1,3})(?:-(\d{1,3})(?::(\d{1,2}))?)?$/);
+    if (!m) throw new Error(`"${tok}" não é válido`);
+    const a = +m[1], b = m[2] != null ? +m[2] : a, step = Math.max(1, +(m[3] || 1));
+    if (a <= b) for (let n = a; n <= b; n += step) out.push(n); else for (let n = a; n >= b; n -= step) out.push(n);
+  }
+  return out;
+}
+function buildLayout(venue) {
+  const zones = [], idx = new Map();
+  venue.zones.forEach((z, zi) => {
+    const rowsArr = [];
+    (z.rows || []).forEach((r, ri) => {
+      const slots = parseRow(r.items), seats = [];
+      let seg = 0, prevGap = false;
+      slots.forEach((n, pos) => {
+        if (n == null) { if (!prevGap) seg++; prevGap = true; return; }
+        prevGap = false;
+        const s = { id: `${z.id}-${r.label}-${n}`, zone: z.id, zi, zoneName: z.name, row: r.label, ri, n, pos, seg, rowLen: slots.length };
+        if (idx.has(s.id)) return;
+        seats.push(s); idx.set(s.id, s);
+      });
+      rowsArr.push({ label: r.label, slots, seats });
+    });
+    zones.push({ ...z, zi, rowsArr });
+  });
+  return { zones, idx, total: idx.size };
+}
+function seatName(id) { const s = S.layout.idx.get(id); if (s) return `${s.zoneName} ${s.row}-${pad(s.n)}`; const p = id.split("-"); return `${p[1]}-${pad(p[2])}`; }
+/* Groups seats by zone and row; physically adjacent seats (same block, next slot) become one run "A-01…A-09 (5)". */
+function formatSeats(ids) {
+  const byZone = new Map();
+  ids.map(id => S.layout.idx.get(id) || (() => { const p = id.split("-"); return { zone: p[0], zi: 99, zoneName: "?", row: p[1], ri: 99, n: +p[2], pos: +p[2], seg: 0 }; })())
+    .sort((a, b) => a.zi - b.zi || a.ri - b.ri || a.pos - b.pos)
+    .forEach(s => {
+      if (!byZone.has(s.zoneName)) byZone.set(s.zoneName, new Map());
+      const rows = byZone.get(s.zoneName);
+      if (!rows.has(s.row)) rows.set(s.row, []);
+      rows.get(s.row).push(s);
+    });
+  const lbl = (s) => `${s.row}-${pad(s.n)}`;
+  const parts = [];
+  for (const [zn, rows] of byZone) {
+    const out = [];
+    for (const [, seats] of rows) {
+      let run = [seats[0]];
+      const flush = () => { out.push(run.length === 1 ? lbl(run[0]) : run.length === 2 ? `${lbl(run[0])}, ${lbl(run[1])}` : `${lbl(run[0])}…${lbl(run[run.length - 1])} (${run.length})`); };
+      for (let i = 1; i < seats.length; i++) {
+        const p = run[run.length - 1], c = seats[i];
+        if (c.seg === p.seg && c.pos === p.pos + 1) run.push(c); else { flush(); run = [c]; }
+      }
+      flush();
+    }
+    parts.push(`${zn} ${out.join(", ")}`);
+  }
+  return parts.join("; ");
+}
+const seatType = (id) => (S.venue.types && S.venue.types[id]) || "normal";
+
+/* ---------- Stores ---------- */
+function serialQueue() { const m = new Map(); return (k, fn) => { const p = (m.get(k) || Promise.resolve()).catch(() => {}).then(fn); m.set(k, p); return p; }; }
+function conflictCheck(existing, seats, excludeId) {
+  const taken = new Set();
+  existing.forEach(b => { if (b.id !== excludeId) (b.seats || []).forEach(x => taken.add(x)); });
+  const clash = seats.filter(x => taken.has(x));
+  if (clash.length) { const e = new Error("conflict"); e.code = "conflict"; e.seats = clash; throw e; }
+}
+function makeDbStore(db) {
+  const q = serialQueue();
+  const bcol = (eid) => db.collection(`events/${eid}/bookings`);
+  async function withLock(eid, fn) {
+    const lock = db.doc(`locks/${eid}`), holder = Math.random().toString(36).slice(2);
+    let r = { acquired: false };
+    for (let i = 0; i < 6 && !r.acquired; i++) { r = await lock.acquire({ holder, ttlMs: 6000 }); if (!r.acquired) await sleep(350 + Math.random() * 400); }
+    if (!r.acquired) { const e = new Error("busy"); e.code = "busy"; throw e; }
+    const snap = await bcol(eid).get();
+    return fn(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }
+  return {
+    onVenue: (cb, err) => db.doc("config/venue").onSnapshot(s => cb(s.exists ? s.data() : null), err),
+    saveVenue: (v) => q("venue", () => db.doc("config/venue").set(v)),
+    onEvents: (cb, err) => db.collection("events").onSnapshot(s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), err),
+    addEvent: async (d) => { const ref = db.collection("events").doc(); await ref.set(d); return ref.id; },
+    updateEvent: (id, p) => q("e" + id, () => db.doc("events/" + id).update(p)),
+    deleteEvent: async (id) => {
+      const s = await bcol(id).get();
+      for (const d of s.docs) await db.doc(`events/${id}/bookings/${d.id}`).delete();
+      await db.doc("logos/" + id).delete();
+      await db.doc("events/" + id).delete();
+    },
+    onLogo: (eid, cb, err) => db.doc("logos/" + eid).onSnapshot(s => cb(s.exists ? (s.data() || {}).data || null : null), err),
+    setLogo: (eid, data) => q("l" + eid, () => data ? db.doc("logos/" + eid).set({ data, updatedAt: new Date().toISOString() }) : db.doc("logos/" + eid).delete()),
+    onBookings: (eid, cb, err) => bcol(eid).onSnapshot(s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), err),
+    addBooking: (eid, d) => withLock(eid, async (all) => { conflictCheck(all, d.seats); const ref = await bcol(eid).add(d); return ref.id; }),
+    updateBooking: (eid, bid, p) => p.seats
+      ? withLock(eid, async (all) => { conflictCheck(all, p.seats, bid); await q("b" + bid, () => db.doc(`events/${eid}/bookings/${bid}`).update(p)); })
+      : q("b" + bid, () => db.doc(`events/${eid}/bookings/${bid}`).update(p)),
+    deleteBooking: (eid, bid) => q("b" + bid, () => db.doc(`events/${eid}/bookings/${bid}`).delete())
+  };
+}
+function makeMemStore(seed) {
+  const st = JSON.parse(JSON.stringify(seed)); st.logos = st.logos || {}; const L = { venue: [], events: [], bookings: new Map(), logo: null };
+  let n = 100; const id = () => "m" + (n++);
+  const emitV = () => L.venue.forEach(f => f(st.venue && JSON.parse(JSON.stringify(st.venue))));
+  const emitE = () => L.events.forEach(f => f(Object.entries(st.events).map(([k, v]) => ({ id: k, ...v }))));
+  const emitB = (eid) => (L.bookings.get(eid) || []).forEach(f => f(Object.entries(st.bookings[eid] || {}).map(([k, v]) => ({ id: k, ...v }))));
+  const sub = (arr, f, kick) => { arr.push(f); setTimeout(kick, 0); return () => { const i = arr.indexOf(f); if (i >= 0) arr.splice(i, 1); }; };
+  return {
+    onVenue: (cb) => sub(L.venue, cb, emitV),
+    saveVenue: async (v) => { st.venue = JSON.parse(JSON.stringify(v)); emitV(); },
+    onEvents: (cb) => sub(L.events, cb, emitE),
+    addEvent: async (d) => { const k = id(); st.events[k] = d; emitE(); return k; },
+    updateEvent: async (k, p) => { st.events[k] = { ...st.events[k], ...p }; emitE(); },
+    deleteEvent: async (k) => { delete st.events[k]; delete st.bookings[k]; emitE(); },
+    onBookings: (eid, cb) => { if (!L.bookings.has(eid)) L.bookings.set(eid, []); return sub(L.bookings.get(eid), cb, () => emitB(eid)); },
+    addBooking: async (eid, d) => { const all = Object.entries(st.bookings[eid] || {}).map(([k, v]) => ({ id: k, ...v })); conflictCheck(all, d.seats); const k = id(); (st.bookings[eid] = st.bookings[eid] || {})[k] = d; emitB(eid); return k; },
+    updateBooking: async (eid, bid, p) => { const all = Object.entries(st.bookings[eid] || {}).map(([k, v]) => ({ id: k, ...v })); if (p.seats) conflictCheck(all, p.seats, bid); st.bookings[eid][bid] = deepMerge(st.bookings[eid][bid], p); emitB(eid); },
+    onLogo: (eid, cb) => { setTimeout(() => cb(st.logos[eid] || null), 0); L.logo = { eid, cb }; return () => { L.logo = null; }; },
+    setLogo: async (eid, data) => { if (data) st.logos[eid] = data; else delete st.logos[eid]; if (L.logo && L.logo.eid === eid) L.logo.cb(data || null); },
+    deleteBooking: async (eid, bid) => { delete st.bookings[eid][bid]; emitB(eid); }
+  };
+}
+function supaErr(error) {
+  const m = (error && error.message) || "";
+  const e = new Error(m); e.raw = error;
+  if (m.startsWith("conflict:")) { e.code = "conflict"; e.seats = m.slice(9).split(",").filter(Boolean); }
+  else if (error && error.code === "23505") { e.code = "conflict"; e.seats = []; }
+  else if (error && (error.code === "42501" || /row-level security/i.test(m))) e.code = "denied";
+  else e.code = "unavailable";
+  return e;
+}
+function makeSupaStore(sb) {
+  const L = { venue: [], events: [], logo: [], book: [] };
+  const timers = {};
+  const soon = (k, fn) => { clearTimeout(timers[k]); timers[k] = setTimeout(fn, 150); };
+  const ok = (r) => { if (r.error) throw supaErr(r.error); return r.data; };
+  async function fetchVenue() { const r = await sb.from("venue").select("zones,types").eq("id", 1).maybeSingle(); if (!r.error) L.venue.forEach(f => f(r.data)); }
+  async function fetchEvents() {
+    const r = await sb.from("events").select("id,name,date,time,notes,paper,blocked,created_at").order("date");
+    if (!r.error) L.events.forEach(f => f(r.data.map(e => ({ ...e, blocked: e.blocked || [], createdAt: e.created_at }))));
+  }
+  async function fetchLogo(l) { const r = await sb.from("events").select("logo").eq("id", l.eid).maybeSingle(); if (!r.error) l.cb(r.data ? r.data.logo : null); }
+  async function fetchBookings(l) {
+    const [b, st] = await Promise.all([
+      sb.from("bookings").select("id,name,contact,notes,created_at").eq("event_id", l.eid),
+      sb.from("seats").select("seat_id,booking_id,code,entered_at").eq("event_id", l.eid)
+    ]);
+    if (b.error || st.error) { l.err && l.err(supaErr(b.error || st.error)); return; }
+    const map = new Map(b.data.map(x => [x.id, { id: x.id, name: x.name, contact: x.contact, notes: x.notes, createdAt: x.created_at, seats: [], tickets: [], entered: {}, checkedIn: false, checkedAt: null }]));
+    st.data.forEach(r => { const k = map.get(r.booking_id); if (!k) return; k.seats.push(r.seat_id); k.tickets.push({ s: r.seat_id, c: r.code }); if (r.entered_at) { k.entered[r.seat_id] = r.entered_at; if (!k.checkedAt || r.entered_at > k.checkedAt) k.checkedAt = r.entered_at; } });
+    map.forEach(k => { k.checkedIn = k.seats.length > 0 && k.seats.every(id => k.entered[id]); });
+    l.cb([...map.values()]);
+  }
+  sb.channel("bilheteira")
+    .on("postgres_changes", { event: "*", schema: "public", table: "venue" }, () => soon("v", fetchVenue))
+    .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => { soon("e", fetchEvents); L.logo.forEach(l => soon("l" + l.eid, () => fetchLogo(l))); })
+    .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => L.book.forEach(l => soon("b" + l.eid, () => fetchBookings(l))))
+    .on("postgres_changes", { event: "*", schema: "public", table: "seats" }, () => L.book.forEach(l => soon("b" + l.eid, () => fetchBookings(l))))
+    .subscribe();
+  /* safety net if the realtime connection drops */
+  setInterval(() => { if (document.visibilityState === "visible") { fetchEvents(); L.book.forEach(l => fetchBookings(l)); } }, 60000);
+  const refreshBookings = (eid) => L.book.filter(l => l.eid === eid).forEach(l => fetchBookings(l));
+  const sub = (arr, item, kick) => { arr.push(item); kick(); return () => { const i = arr.indexOf(item); if (i >= 0) arr.splice(i, 1); }; };
+  return {
+    serverTickets: true,
+    onVenue: (cb) => sub(L.venue, cb, fetchVenue),
+    saveVenue: async (v) => { ok(await sb.from("venue").upsert({ id: 1, zones: v.zones, types: v.types || {}, updated_at: new Date().toISOString() })); },
+    onEvents: (cb) => sub(L.events, cb, fetchEvents),
+    addEvent: async (d) => { const r = ok(await sb.from("events").insert({ name: d.name, date: d.date, time: d.time || "", notes: d.notes || "", paper: d.paper || "80", blocked: d.blocked || [] }).select("id").single()); fetchEvents(); return r.id; },
+    updateEvent: async (id, p) => { const q = {}; ["name", "date", "time", "notes", "paper", "blocked"].forEach(k => { if (k in p) q[k] = p[k]; }); ok(await sb.from("events").update(q).eq("id", id)); fetchEvents(); },
+    deleteEvent: async (id) => { ok(await sb.from("events").delete().eq("id", id)); fetchEvents(); },
+    onLogo: (eid, cb) => { const l = { eid, cb }; return sub(L.logo, l, () => fetchLogo(l)); },
+    setLogo: async (eid, data) => { ok(await sb.from("events").update({ logo: data || null }).eq("id", eid)); },
+    onBookings: (eid, cb, err) => { const l = { eid, cb, err }; return sub(L.book, l, () => fetchBookings(l)); },
+    addBooking: async (eid, d) => {
+      const id = ok(await sb.rpc("create_booking", { p_event: eid, p_name: d.name, p_contact: d.contact || "", p_notes: d.notes || "", p_seats: d.seats, p_codes: d.seats.map(x => makeCode(eid, x)) }));
+      refreshBookings(eid); return id;
+    },
+    updateBooking: async (eid, bid, p) => {
+      if (p.seats) ok(await sb.rpc("set_booking_seats", { p_booking: bid, p_seats: p.seats, p_codes: p.seats.map(x => makeCode(eid, x)) }));
+      if ("checkedIn" in p) ok(await sb.rpc("checkin_booking", { p_booking: bid, p_in: !!p.checkedIn }));
+      const q = {}; ["name", "contact", "notes"].forEach(k => { if (k in p) q[k] = p[k]; });
+      if (Object.keys(q).length) ok(await sb.from("bookings").update(q).eq("id", bid));
+      refreshBookings(eid);
+    },
+    deleteBooking: async (eid, bid) => { ok(await sb.from("bookings").delete().eq("id", bid)); refreshBookings(eid); },
+    validate: async (eid, code) => { const r = ok(await sb.rpc("validate_ticket", { p_event: eid, p_code: code })); refreshBookings(eid); return r; }
+  };
+}
+const DEMO = {
+  venue: { zones: DEFAULT_VENUE.zones, types: { "P-I-2":"acc","P-I-1":"acc","P-C-2":"vip","P-C-4":"vip","P-C-1":"vip","P-C-3":"vip" } },
+  events: { ex1: { name: "Ensaio aberto (exemplo)", date: "2026-11-14", time: "21:30", notes: "Dados de demonstração", blocked: ["P-A-1","P-A-18"], createdAt: "2026-10-27T10:00:00Z" } },
+  bookings: { ex1: {
+    b1: { name: "Ana Ribeiro (exemplo)", contact: "912 000 001", notes: "", seats: ["P-F-4","P-F-2","P-F-1"], checkedIn: false, checkedAt: null, createdAt: "2026-10-27T10:01:00Z" },
+    b2: { name: "Escola Básica da Serra (exemplo)", contact: "geral@exemplo.pt", notes: "Grupo escolar", seats: ["B-J-12","B-J-11","B-J-10","B-J-9","B-J-8","B-J-7"], checkedIn: false, checkedAt: null, entered: { "B-J-12": "2026-10-27T21:05:00Z", "B-J-11": "2026-10-27T21:05:00Z" }, createdAt: "2026-10-27T10:02:00Z" },
+    b3: { name: "Rui Moreira (exemplo)", contact: "", notes: "Cadeira de rodas", seats: ["P-I-2","P-I-1"], checkedIn: false, checkedAt: null, createdAt: "2026-10-27T10:03:00Z" }
+  } }
+};
+
+/* ---------- State ---------- */
+const S = {
+  store: null, demo: false, readOnly: false, ready: false, downloads: null,
+  venue: DEFAULT_VENUE, layout: buildLayout(DEFAULT_VENUE), layoutKey: "",
+  events: [], eventId: null, bookings: [], seatOwner: new Map(),
+  selection: new Set(), mode: "book", brush: "acc", focus: null, reassign: null,
+  tab: "book", search: "", filter: "all",
+  form: { name: "", contact: "", notes: "" }, edit: null,
+  auto: { n: 2, zone: "any", type: "normal" },
+  newEvent: null, editEvent: null, confirm: null, unsubB: null, pendingBlocked: {}, pendingVenue: null,
+  unsubL: null, logo: null, ticketIndex: new Map(), scanInput: "", scan: null, scanLog: [], tk: null
+};
+try { const last = localStorage.getItem("bp-event"); if (last) S.eventId = last; } catch (e) {}
+
+const curEvent = () => S.events.find(e => e.id === S.eventId) || null;
+const blockedSet = () => new Set((curEvent() && curEvent().blocked) || []);
+const canWrite = () => !S.readOnly && S.ready;
+const isUser = () => !!(S.me && !S.me.admin);
+const canScan = () => S.ready && (canWrite() || isUser());
+
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3800); }
+function errMsg(e) {
+  if (e && e.code === "conflict") return `Estes lugares acabaram de ser reservados por outra pessoa: ${formatSeats(e.seats)}. Escolha outros.`;
+  if (e && e.code === "busy") return "Outra pessoa está a gravar uma reserva neste momento. Tente de novo dentro de segundos.";
+  if (e && e.code === "quota_exceeded") return "A base de dados está cheia. Apague eventos antigos para libertar espaço.";
+  if (e && (e.code === "invalid_argument" || e.code === "denied")) return "A sua conta não tem permissão para esta alteração.";
+  return "Não foi possível guardar. Verifique a ligação e tente de novo.";
+}
+
+/* ---------- Focus-preserving render ---------- */
+function keepFocus(fn) {
+  const a = document.activeElement, id = a && a.id;
+  let ss = null, se = null; try { ss = a.selectionStart; se = a.selectionEnd; } catch (e) {}
+  fn();
+  if (id) { const el = $(id); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
+}
+function renderAll() { keepFocus(() => { renderEvents(); renderHeader(); renderModeBar(); renderMapIfNeeded(); updateSeats(); renderTabs(); renderPanel(); }); }
+
+/* ---------- Events rail ---------- */
+function fmtDate(d, opts) { if (!d) return ""; const x = new Date(d + "T12:00:00"); return isNaN(x) ? d : x.toLocaleDateString("pt-PT", opts); }
+function renderEvents() {
+  $("newEventBtn").hidden = !canWrite();
+  const box = $("newEventBox");
+  box.innerHTML = S.newEvent ? `<div class="card">${eventForm("ne", S.newEvent)}<div class="row-btns"><button class="btn primary sm" data-act="ne-save" type="button">Criar evento</button><button class="btn ghost sm" data-act="ne-cancel" type="button">Cancelar</button></div></div>` : "";
+  const today = todayISO();
+  const up = S.events.filter(e => (e.date || "") >= today), past = S.events.filter(e => (e.date || "") < today).reverse();
+  const item = (e, isPast) => `<button type="button" class="ev ${e.id === S.eventId ? "on" : ""} ${isPast ? "past" : ""}" data-ev="${esc(e.id)}">
+      <span class="d"><b>${esc(fmtDate(e.date, { day: "numeric" }))}</b><small>${esc(fmtDate(e.date, { month: "short" }).replace(".", ""))}</small></span>
+      <span class="t"><strong>${esc(e.name)}</strong><span>${esc(fmtDate(e.date, { weekday: "short" }))}${e.time ? " · " + esc(e.time) : ""}</span></span></button>`;
+  let html = "";
+  if (!S.ready) html = `<p class="muted small">A carregar eventos…</p>`;
+  else if (!S.events.length) html = `<p class="muted small">Ainda não há eventos. ${canWrite() ? "Crie o primeiro com <b>+ Novo evento</b>." : ""}</p>`;
+  else {
+    html += `<div class="events">${up.map(e => item(e, false)).join("") || `<p class="muted small">Sem eventos futuros.</p>`}</div>`;
+    if (past.length) html += `<div class="group"><span class="label">Anteriores</span><div class="events" style="margin-top:6px">${past.map(e => item(e, true)).join("")}</div></div>`;
+  }
+  $("eventsList").innerHTML = html;
+}
+function eventForm(p, v) {
+  return `<div class="field"><label for="${p}-name">Nome do evento</label><input id="${p}-name" data-f="${p}.name" value="${esc(v.name)}" placeholder="Ex.: Auto da Barca — estreia"></div>
+    <div class="grid2"><div class="field"><label for="${p}-date">Data</label><input type="date" id="${p}-date" data-f="${p}.date" value="${esc(v.date)}"></div>
+    <div class="field"><label for="${p}-time">Hora</label><input type="time" id="${p}-time" data-f="${p}.time" value="${esc(v.time)}"></div></div>
+    <div class="grid2"><div class="field"><label for="${p}-notes">Notas</label><input id="${p}-notes" data-f="${p}.notes" value="${esc(v.notes)}" placeholder="Opcional"></div>
+    <div class="field"><label for="${p}-paper">Rolo dos bilhetes</label><select id="${p}-paper" data-f="${p}.paper">${Object.entries(PAPERS).map(([k, o]) => `<option value="${k}" ${String(v.paper || "80") === k ? "selected" : ""}>${o.name}</option>`).join("")}</select></div></div>`;
+}
+
+/* ---------- Header ---------- */
+function renderHeader() {
+  const ev = curEvent(), h = $("evHeader");
+  if (!ev) { h.innerHTML = `<h2>${S.ready ? "Nenhum evento selecionado" : "A carregar…"}</h2><p class="muted" style="margin:0">Escolha ou crie um evento para reservar lugares. Pode configurar a sala e os tipos de lugar a qualquer momento.</p>`; return; }
+  if (S.editEvent) {
+    h.innerHTML = `${eventForm("ee", S.editEvent)}
+      <div class="field"><label for="ee-logo">Logotipo para os bilhetes</label>
+        <div class="row-btns">${S.logo ? `<img class="evlogo" src="${esc(S.logo)}" alt="Logotipo atual">` : ""}
+          <label class="btn sm" for="ee-logo">${S.logo ? "Trocar imagem" : "Escolher imagem"}</label><input type="file" id="ee-logo" accept="image/*" hidden>
+          ${S.logo ? `<button class="btn ghost sm" data-act="logo-del" type="button">Remover</button>` : ""}</div>
+        <span class="small muted">Convertido para preto e branco, próprio para impressão térmica. Fica guardado logo que o escolhe.</span></div>
+      <div class="row-btns"><button class="btn primary sm" data-act="ee-save" type="button">Guardar</button><button class="btn ghost sm" data-act="ee-cancel" type="button">Cancelar</button></div>`;
+    return;
+  }
+  const blocked = blockedSet(); const cap = S.layout.total - [...blocked].filter(id => S.layout.idx.has(id)).length;
+  let booked = 0, inSeats = 0; S.bookings.forEach(b => { booked += (b.seats || []).length; inSeats += enteredCount(b); });
+  const free = Math.max(0, cap - booked); const pct = (x) => cap ? (x / cap * 100).toFixed(2) + "%" : "0";
+  const conf = S.confirm === "del-event";
+  h.innerHTML = `<div class="evhead">
+      <div class="evtitle">${S.logo ? `<img class="evlogo" src="${esc(S.logo)}" alt="Logotipo">` : ""}<div style="min-width:0"><h2>${esc(ev.name)}</h2><div class="muted">${esc(fmtDate(ev.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" }))}${ev.time ? " · " + esc(ev.time) : ""}${ev.notes ? " · " + esc(ev.notes) : ""}</div></div></div>
+      ${canWrite() ? `<div class="row-btns"><button class="btn sm" data-act="ee-open" type="button">Editar</button><button class="btn ghost sm" data-act="ev-del" type="button">Apagar</button></div>` : ""}
+    </div>
+    ${conf ? `<div class="confirm"><p>Apagar <b>${esc(ev.name)}</b> e as ${S.bookings.length} reservas associadas? Não é possível desfazer.</p><button class="btn danger sm" data-act="ev-del-yes" type="button">Apagar evento</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div>` : ""}
+    <div class="stats">
+      <div class="stat"><b>${cap}</b><span>Lotação</span></div>
+      <div class="stat"><b>${booked}</b><span>Reservados</span></div>
+      <div class="stat"><b>${free}</b><span>Livres</span></div>
+      <div class="stat"><b>${inSeats}</b><span>Entradas</span></div>
+      <div class="stat"><b>${S.bookings.length}</b><span>Reservas</span></div>
+    </div>
+    <div class="occ" title="Ocupação"><i style="width:${pct(inSeats)};background:var(--ok)"></i><i style="width:${pct(booked - inSeats)};background:var(--velvet)"></i></div>`;
+}
+
+/* ---------- Mode bar ---------- */
+function renderModeBar() {
+  const mb = $("modeBar");
+  if (!canWrite()) { mb.innerHTML = `<span class="muted small">Modo de consulta</span>`; return; }
+  const m = (k, t) => `<button type="button" class="${S.mode === k ? "on" : ""}" data-mode="${k}">${t}</button>`;
+  mb.innerHTML = `<div class="seg">${m("book", "Reservar")}${m("block", "Bloquear lugares")}${m("types", "Tipos de lugar")}</div>
+    ${S.mode === "types" ? `<div class="seg">${["normal", "acc", "vip"].map(k => `<button type="button" class="${S.brush === k ? "on" : ""}" data-brush="${k}">${TYPE_NAMES[k]}</button>`).join("")}</div>` : ""}
+    <button class="btn ghost sm" data-act="venue-open" type="button">Planta da sala</button>`;
+  const hint = $("mapHint");
+  hint.textContent = S.reassign ? `A alterar os lugares de ${S.reassign.name}: clique para adicionar ou retirar lugares e depois guarde no painel.`
+    : S.mode === "block" ? (curEvent() ? "Clique ou arraste sobre lugares para bloquear ou desbloquear neste evento (ex.: régie, câmara, convidados)." : "Escolha um evento para bloquear lugares.")
+    : S.mode === "types" ? `Clique ou arraste para marcar lugares como ${TYPE_NAMES[S.brush]}. Os tipos aplicam-se a todos os eventos.`
+    : "Clique em lugares livres para os selecionar. Clique num lugar reservado para ver a reserva.";
+  document.querySelector(".map").className = "map mode-" + S.mode;
+}
+
+/* ---------- Map ---------- */
+function renderMapIfNeeded() {
+  const key = JSON.stringify(S.venue.zones);
+  if (key === S.layoutKey) return;
+  S.layoutKey = key; S.layout = buildLayout(S.venue);
+  let html = `<div class="stage">PALCO</div>`;
+  S.layout.zones.forEach((z, i) => {
+    html += `<div class="zone-label label ${i === 0 ? "first" : ""}">${esc(z.name)}</div>`;
+    z.rowsArr.forEach(r => {
+      const cells = r.slots.map(n => n == null ? `<span class="gap"></span>`
+        : `<button type="button" class="seat" data-seat="${z.id}-${r.label}-${n}" aria-label="${esc(z.name)} fila ${r.label} lugar ${n}">${pad(n)}</button>`).join("");
+      html += `<div class="srow"><span class="rl">${esc(r.label)}</span>${cells}<span class="rl">${esc(r.label)}</span></div>`;
+    });
+  });
+  $("map").innerHTML = html;
+}
+function updateSeats() {
+  const blocked = blockedSet(), owners = S.seatOwner, focusB = S.focus && S.bookings.find(b => b.id === S.focus);
+  const focusSeats = new Set(focusB ? focusB.seats : []);
+  const re = S.reassign, reSeats = re ? re.seats : null;
+  document.querySelectorAll("#map .seat").forEach(el => {
+    const id = el.dataset.seat, t = seatType(id), ownerId = owners.get(id);
+    const owner = ownerId && S.bookings.find(b => b.id === ownerId);
+    let cls = "seat";
+    if (t !== "normal") cls += " t-" + t;
+    let state = "Livre";
+    if (re && reSeats.has(id)) { cls += " is-sel"; state = "Selecionado"; }
+    else if (owner) { const inn = seatIn(owner, id); cls += inn ? " is-in" : " is-booked"; state = (inn ? "Entrou: " : "Reservado: ") + owner.name; if (re && owner.id !== re.id) cls += " is-dim"; }
+    else if (blocked.has(id)) { cls += " is-blocked"; state = "Bloqueado"; }
+    else if (S.selection.has(id)) { cls += " is-sel"; state = "Selecionado"; }
+    if (focusSeats.has(id) && !re) cls += " is-hl";
+    if (el.className !== cls) el.className = cls;
+    const title = `${seatName(id)}${t !== "normal" ? " (" + TYPE_NAMES[t] + ")" : ""} · ${state}`;
+    if (el.title !== title) el.title = title;
+  });
+}
+
+/* ---------- Auto allocation ---------- */
+function segmentsFor(type, zonePref, exclude) {
+  const blocked = blockedSet(), segs = [];
+  const ok = (s) => {
+    if (S.seatOwner.has(s.id) || blocked.has(s.id) || exclude.has(s.id)) return false;
+    const t = seatType(s.id);
+    if (type === "vip") return t === "vip";
+    if (type === "acc") return t === "acc" || t === "normal";
+    return t === "normal";
+  };
+  for (const z of S.layout.zones) {
+    if (zonePref !== "any" && z.id !== zonePref) continue;
+    for (const row of z.rowsArr) {
+      let cur = [], prev = null;
+      for (const s of row.seats) {
+        const good = ok(s);
+        if (!good || (prev && (s.seg !== prev.seg || s.pos !== prev.pos + 1))) { if (cur.length) segs.push({ z, seats: cur }); cur = []; }
+        if (good) cur.push(s);
+        prev = s;
+      }
+      if (cur.length) segs.push({ z, seats: cur });
+    }
+  }
+  return segs;
+}
+function windowScore(z, w) {
+  const ideal = Math.round((z.rowsArr.length - 1) * 0.4), len = w[0].rowLen;
+  const mid = (w[0].pos + w[w.length - 1].pos) / 2, centre = (len - 1) / 2;
+  return Math.abs(w[0].ri - ideal) + Math.abs(mid - centre) / len * 8 + z.zi * 4;
+}
+function bestWindow(segs, n, needAcc) {
+  let best = null;
+  for (const sg of segs) {
+    for (let i = 0; i + n <= sg.seats.length; i++) {
+      const w = sg.seats.slice(i, i + n);
+      if (needAcc && !w.some(s => seatType(s.id) === "acc")) continue;
+      const sc = windowScore(sg.z, w);
+      if (!best || sc < best.sc) best = { sc, w };
+    }
+  }
+  return best;
+}
+function suggest(n, zonePref, type) {
+  const one = bestWindow(segmentsFor(type, zonePref, new Set()), n, type === "acc");
+  if (one) return { ids: one.w.map(s => s.id), split: false };
+  const picked = new Set(); let remaining = n, guard = 0;
+  while (remaining > 0 && guard++ < 200) {
+    const segs = segmentsFor(type, zonePref, picked);
+    if (!segs.length) break;
+    const k = Math.min(remaining, Math.max(...segs.map(s => s.seats.length)));
+    const b = bestWindow(segs, k, false);
+    if (!b) break;
+    b.w.forEach(s => picked.add(s.id)); remaining -= k;
+  }
+  return { ids: [...picked], split: true };
+}
+
+/* ---------- Panel ---------- */
+function renderTabs() {
+  const t = (k, label, count) => `<button type="button" class="${S.tab === k ? "on" : ""}" data-tab="${k}">${label}${count != null ? `<span class="count">${count}</span>` : ""}</button>`;
+  if (isUser()) { S.tab = "scan"; $("tabs").innerHTML = t("scan", "Entradas"); return; }
+  $("tabs").innerHTML = t("book", "Reservar") + t("list", "Reservas", S.bookings.length) + t("scan", "Entradas");
+}
+function renderPanel() {
+  const body = $("panelBody"), ev = curEvent();
+  if (!ev) { body.innerHTML = `<div class="card"><p class="muted" style="margin:0">Selecione um evento à esquerda para reservar lugares e registar entradas.</p></div>`; return; }
+  body.innerHTML = (isUser() || S.tab === "scan") ? scanPanel() : S.tab === "list" ? listPanel() : bookPanel();
+  if (isUser() && !document.querySelector(".overlay:not([hidden])")) { const i = $("scan-input"); if (i && document.activeElement !== i && !(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) i.focus({ preventScroll: true }); }
+}
+function bookPanel() {
+  let html = "";
+  if (S.reassign) {
+    const ids = [...S.reassign.seats];
+    return `<div class="card"><div class="card-head"><h3>Alterar lugares</h3></div>
+      <p style="margin:0"><b>${esc(S.reassign.name)}</b> · ${ids.length} lugar${ids.length === 1 ? "" : "es"}</p>
+      <div class="small mono">${ids.length ? esc(formatSeats(ids)) : "Sem lugares: selecione no mapa."}</div>
+      <div class="row-btns"><button class="btn primary sm" data-act="re-save" type="button" ${ids.length ? "" : "disabled"}>Guardar lugares</button><button class="btn ghost sm" data-act="re-cancel" type="button">Cancelar</button></div></div>`;
+  }
+  const fb = S.focus && S.bookings.find(b => b.id === S.focus);
+  if (fb) {
+    const e = S.edit || { name: fb.name, contact: fb.contact || "", notes: fb.notes || "" };
+    const conf = S.confirm === "cancel:" + fb.id, nIn = enteredCount(fb), nAll = (fb.seats || []).length;
+    const stTxt = nIn === 0 ? "Por entrar" : nIn < nAll ? `Entraram ${nIn} de ${nAll}` : "Entrou" + (fb.checkedAt ? " às " + new Date(fb.checkedAt).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "");
+    html += `<div class="card"><div class="card-head"><h3>Reserva</h3>
+        <span class="status ${nIn ? "in" : "out"}">${stTxt}</span></div>
+      <div class="small mono">${esc(formatSeats(fb.seats || []))} · ${(fb.seats || []).length} lugar${(fb.seats || []).length === 1 ? "" : "es"}</div>
+      ${canWrite() ? `
+      <div class="field"><label for="ed-name">Nome</label><input id="ed-name" data-f="edit.name" value="${esc(e.name)}"></div>
+      <div class="field"><label for="ed-contact">Contacto</label><input id="ed-contact" data-f="edit.contact" value="${esc(e.contact)}"></div>
+      <div class="field"><label for="ed-notes">Notas</label><textarea id="ed-notes" data-f="edit.notes">${esc(e.notes)}</textarea></div>
+      <div class="row-btns">
+        <button class="btn primary sm" data-act="tk-open" data-id="${esc(fb.id)}" type="button">Imprimir bilhetes (${nAll})</button>
+        <button class="btn sm" data-act="checkin" data-id="${esc(fb.id)}" type="button">${nIn === nAll ? "Anular entrada" : "Registar entrada"}</button>
+        ${S.edit ? `<button class="btn sm" data-act="ed-save" type="button">Guardar alterações</button>` : ""}
+        <button class="btn sm" data-act="re-open" type="button">Alterar lugares</button>
+        <button class="btn ghost sm" data-act="bk-cancel" type="button">Cancelar reserva</button>
+        <button class="btn ghost sm" data-act="focus-close" type="button">Fechar</button>
+      </div>
+      ${conf ? `<div class="confirm"><p>Cancelar a reserva de <b>${esc(fb.name)}</b> e libertar ${(fb.seats || []).length} lugares?</p><button class="btn danger sm" data-act="bk-cancel-yes" type="button">Cancelar reserva</button><button class="btn ghost sm" data-act="confirm-no" type="button">Voltar</button></div>` : ""}`
+      : `<p style="margin:0"><b>${esc(fb.name)}</b><br><span class="muted">${esc(fb.contact || "")}</span></p>${fb.notes ? `<p class="small" style="margin:0">${esc(fb.notes)}</p>` : ""}<div class="row-btns"><button class="btn ghost sm" data-act="focus-close" type="button">Fechar</button></div>`}
+    </div>`;
+    return html;
+  }
+  if (!canWrite()) return `<div class="card"><p class="muted" style="margin:0">Pode consultar o mapa e as reservas. Clique num lugar reservado para ver os detalhes.</p></div>`;
+  if (S.mode !== "book") return `<div class="card"><p class="muted" style="margin:0">${S.mode === "block" ? "Está a bloquear lugares." : "Está a marcar tipos de lugar."} Volte a <b>Reservar</b> para criar reservas.</p></div>`;
+  const sel = [...S.selection];
+  const selCounts = { acc: 0, vip: 0 }; sel.forEach(id => { const t = seatType(id); if (selCounts[t] != null) selCounts[t]++; });
+  html += `<div class="card"><div class="card-head"><h3>Nova reserva</h3>${sel.length ? `<button class="btn ghost sm" data-act="sel-clear" type="button">Limpar</button>` : ""}</div>`;
+  if (!sel.length) html += `<p class="muted" style="margin:0">Clique em lugares livres no mapa ou peça uma sugestão abaixo.</p>`;
+  else html += `<div><span class="label">${sel.length} lugar${sel.length === 1 ? "" : "es"}</span>${selCounts.acc ? ` <span class="small muted">· ${selCounts.acc} mob. reduzida</span>` : ""}${selCounts.vip ? ` <span class="small muted">· ${selCounts.vip} VIP</span>` : ""}</div>
+      <div class="small mono">${esc(formatSeats(sel))}</div>
+      <div class="field"><label for="nb-name">Nome</label><input id="nb-name" data-f="form.name" value="${esc(S.form.name)}" placeholder="Nome de quem reserva" autocomplete="off"></div>
+      <div class="field"><label for="nb-contact">Contacto</label><input id="nb-contact" data-f="form.contact" value="${esc(S.form.contact)}" placeholder="Telefone ou email" autocomplete="off"></div>
+      <div class="field"><label for="nb-notes">Notas</label><textarea id="nb-notes" data-f="form.notes" placeholder="Opcional">${esc(S.form.notes)}</textarea></div>
+      <div class="row-btns"><button class="btn primary" data-act="bk-create" type="button">Reservar ${sel.length} lugar${sel.length === 1 ? "" : "es"}</button></div>`;
+  html += `</div>`;
+  const a = S.auto;
+  html += `<div class="card"><div class="card-head"><h3>Sugestão automática</h3></div>
+    <p class="small muted" style="margin:0">Procura lugares juntos na mesma fila, perto do centro e a boa distância do palco.</p>
+    <div class="grid3">
+      <div class="field"><label for="au-n">Pessoas</label><input id="au-n" type="number" min="1" max="60" data-f="auto.n" value="${a.n}"></div>
+      <div class="field"><label for="au-zone">Zona</label><select id="au-zone" data-f="auto.zone"><option value="any">Qualquer</option>${S.layout.zones.map(z => `<option value="${esc(z.id)}" ${a.zone === z.id ? "selected" : ""}>${esc(z.name)}</option>`).join("")}</select></div>
+      <div class="field"><label for="au-type">Tipo</label><select id="au-type" data-f="auto.type">${Object.entries(TYPE_NAMES).map(([k, v]) => `<option value="${k}" ${a.type === k ? "selected" : ""}>${v}</option>`).join("")}</select></div>
+    </div>
+    <div class="row-btns"><button class="btn sm" data-act="auto" type="button">Sugerir lugares</button></div></div>`;
+  return html;
+}
+function listPanel() {
+  const q = S.search.trim().toLowerCase();
+  const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const nq = norm(q);
+  let rows = S.bookings.slice().sort((a, b) => a.name.localeCompare(b.name, "pt"));
+  const allIn = (b) => enteredCount(b) === (b.seats || []).length;
+  if (S.filter === "out") rows = rows.filter(b => !allIn(b));
+  if (S.filter === "in") rows = rows.filter(b => enteredCount(b) > 0);
+  if (nq) rows = rows.filter(b => norm(b.name).includes(nq) || norm(b.contact).includes(nq) || norm(formatSeats(b.seats || [])).includes(nq) || (b.seats || []).some(id => { const s = S.layout.idx.get(id); const k = nq.replace(/[\s-]/g, ""); return !!k && !!s && (norm(s.row + pad(s.n)) === k || norm(s.row + s.n) === k); }));
+  const nIn = S.bookings.filter(b => enteredCount(b) > 0).length, nOut = S.bookings.filter(b => !allIn(b)).length;
+  const f = (k, t) => `<button type="button" class="${S.filter === k ? "on" : ""}" data-filter="${k}">${t}</button>`;
+  let html = `<div class="card">
+    <div class="field"><label for="search">Procurar por nome, contacto ou lugar</label><input id="search" type="search" data-f="search" value="${esc(S.search)}" placeholder="Ex.: Silva ou F-12" autocomplete="off"></div>
+    <div class="row-btns"><div class="seg">${f("all", "Todas")}${f("out", "Por entrar " + nOut)}${f("in", "Entraram " + nIn)}</div></div>
+    <div class="list">`;
+  if (!rows.length) html += `<div class="empty">${S.bookings.length ? "Nenhuma reserva corresponde à pesquisa." : "Ainda não há reservas neste evento."}</div>`;
+  rows.forEach(b => {
+    const k = enteredCount(b), n = (b.seats || []).length, done = k === n;
+    html += `<div class="bk ${done ? "in" : ""}"><button type="button" class="who" data-focus="${esc(b.id)}"><strong>${esc(b.name)}</strong><span>${esc(formatSeats(b.seats || []))} · ${(b.seats || []).length}</span></button>
+      ${canWrite() ? `<span class="row-btns">${k && !done ? `<span class="status in">${k}/${n}</span>` : ""}<button type="button" class="btn sm ${done ? "" : "primary"}" data-act="checkin" data-id="${esc(b.id)}">${done ? "Anular" : "Entrou"}</button></span>` : `<span class="status ${k ? "in" : "out"}">${done ? "Entrou" : k ? k + "/" + n : "Por entrar"}</span>`}</div>`;
+  });
+  html += `</div></div>
+  <div class="card"><div class="card-head"><h3>Exportar</h3></div>
+    <p class="small muted" style="margin:0">Ficheiros CSV que abrem diretamente no Excel.</p>
+    <div class="row-btns"><button class="btn sm" data-act="exp-list" type="button">Lista de reservas</button><button class="btn sm" data-act="exp-seats" type="button">Lista por lugar</button></div></div>
+  ${canWrite() && S.bookings.length ? `<div class="card"><div class="card-head"><h3>Bilhetes</h3></div>
+    <p class="small muted" style="margin:0">Gera um bilhete por lugar reservado, com logotipo, lugar e código de barras.</p>
+    <div class="row-btns"><button class="btn sm" data-act="tk-all" type="button">Imprimir todos os bilhetes (${S.bookings.reduce((a, b) => a + (b.seats || []).length, 0)})</button></div></div>` : ""}`;
+  return html;
+}
+
+/* ---------- Actions ---------- */
+function setField(path, value) {
+  const [a, b] = path.split(".");
+  if (!b) { S[a] = value; return; }
+  if (a === "edit") { const fb = S.bookings.find(x => x.id === S.focus); if (!S.edit && fb) S.edit = { name: fb.name, contact: fb.contact || "", notes: fb.notes || "" }; }
+  if (a === "ne") { S.newEvent[b] = value; return; }
+  if (a === "ee") { S.editEvent[b] = value; return; }
+  if (a === "auto" && b === "n") value = Math.max(1, Math.min(60, parseInt(value, 10) || 1));
+  S[a][b] = value;
+}
+document.addEventListener("input", (e) => {
+  const f = e.target.dataset && e.target.dataset.f; if (!f) return;
+  setField(f, e.target.value);
+  if (f === "search") keepFocus(renderPanel);
+  if (f.startsWith("edit.") && !document.querySelector('[data-act="ed-save"]')) keepFocus(renderPanel);
+});
+document.addEventListener("change", async (e) => {
+  const f = e.target.dataset && e.target.dataset.f; if (f && e.target.tagName === "SELECT") setField(f, e.target.value);
+  if (e.target.id === "ee-logo" && e.target.files[0]) {
+    const ev = curEvent(); if (!ev) return;
+    try { const data = await processLogo(e.target.files[0]); await S.store.setLogo(ev.id, data); S.logo = data; renderHeader(); toast("Logotipo guardado."); }
+    catch (err) { toast(err && err.code ? errMsg(err) : "Não foi possível ler essa imagem. Experimente um ficheiro PNG ou JPG."); }
+  }
+  if (e.target.id === "scan-photo" && e.target.files[0]) {
+    const file = e.target.files[0]; e.target.value = "";
+    S.scan = { kind: "wait" }; renderPanel();
+    let code = null; try { code = await decodePhoto(file); } catch (err) { code = null; }
+    if (code) validateCode(code);
+    else { S.scan = { kind: "bad", title: "Código não encontrado na fotografia", detail: "Aproxime a câmara do código de barras, com boa luz e o código na horizontal, ou escreva o código impresso por baixo." }; beep(false); renderPanel(); }
+  }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.target.id === "scan-input" && e.key === "Enter") { e.preventDefault(); const v = e.target.value; S.scanInput = ""; e.target.value = ""; validateCode(v); }
+});
+
+function selectEvent(id) {
+  if (S.eventId === id && S.unsubB) return;
+  S.eventId = id; try { if (id) localStorage.setItem("bp-event", id); } catch (e) {}
+  S.selection.clear(); S.focus = null; S.reassign = null; S.edit = null; S.confirm = null; S.editEvent = null;
+  S.bookings = []; S.seatOwner = new Map();
+  if (S.unsubB) { S.unsubB(); S.unsubB = null; }
+  if (S.unsubL) { S.unsubL(); S.unsubL = null; }
+  S.logo = null; S.scan = null; S.scanLog = [];
+  if (id && S.store) S.unsubL = S.store.onLogo(id, (d) => { S.logo = d; renderHeader(); }, () => {});
+  if (id && S.store) S.unsubB = S.store.onBookings(id, (list) => {
+    S.bookings = list; S.seatOwner = new Map(); S.ticketIndex = new Map();
+    list.forEach(b => (b.seats || []).forEach(x => S.seatOwner.set(x, b.id)));
+    list.forEach(b => (b.tickets || []).forEach(t => { if ((b.seats || []).includes(t.s)) S.ticketIndex.set(t.c, { bid: b.id, seat: t.s }); }));
+    [...S.selection].forEach(x => { if (S.seatOwner.has(x)) S.selection.delete(x); });
+    if (S.focus && !list.some(b => b.id === S.focus)) { S.focus = null; S.edit = null; }
+    renderAll();
+  }, (err) => toast(errMsg(err)));
+  renderAll();
+}
+
+async function run(fn, okMsg) { try { await fn(); if (okMsg) toast(okMsg); } catch (e) { toast(errMsg(e)); } }
+
+const debouncers = {};
+function debounce(key, ms, fn) { clearTimeout(debouncers[key]); debouncers[key] = setTimeout(fn, ms); }
+
+function paintSeat(id) {
+  const ev = curEvent();
+  if (S.mode === "block") {
+    if (!ev) return;
+    if (S.seatOwner.has(id)) { toast(`${seatName(id)} está reservado. Cancele ou altere a reserva antes de o bloquear.`); return; }
+    const set = blockedSet(); if (paint.value == null) paint.value = !set.has(id);
+    paint.value ? set.add(id) : set.delete(id);
+    ev.blocked = [...set]; S.pendingBlocked[ev.id] = ev.blocked; updateSeats(); renderHeader();
+    const eid = ev.id; debounce("blk" + eid, 500, async () => { const val = S.pendingBlocked[eid]; await run(() => S.store.updateEvent(eid, { blocked: val })); if (S.pendingBlocked[eid] === val) delete S.pendingBlocked[eid]; });
+  } else if (S.mode === "types") {
+    const types = { ...(S.venue.types || {}) };
+    if (S.brush === "normal") delete types[id]; else types[id] = S.brush;
+    S.venue = { ...S.venue, types }; S.pendingVenue = S.venue; updateSeats();
+    debounce("venue", 500, async () => { const v = S.pendingVenue; await run(() => S.store.saveVenue(v)); if (S.pendingVenue === v) S.pendingVenue = null; });
+  }
+}
+const paint = { on: false, value: null };
+const mapEl = $("map");
+mapEl.addEventListener("pointerdown", (e) => {
+  const el = e.target.closest(".seat"); if (!el || !canWrite() || S.reassign || (S.mode !== "block" && S.mode !== "types")) return;
+  paint.on = true; paint.value = null; paintSeat(el.dataset.seat); e.preventDefault();
+});
+mapEl.addEventListener("pointerover", (e) => { if (!paint.on) return; const el = e.target.closest(".seat"); if (el) paintSeat(el.dataset.seat); });
+window.addEventListener("pointerup", () => { paint.on = false; });
+
+mapEl.addEventListener("click", (e) => {
+  const el = e.target.closest(".seat"); if (!el) return;
+  const id = el.dataset.seat, owner = S.seatOwner.get(id);
+  if (!curEvent()) { if (S.mode !== "types") toast("Escolha ou crie um evento primeiro."); return; }
+  if (canWrite() && (S.mode === "block" || S.mode === "types") && !S.reassign) return;
+  if (S.reassign) {
+    if (owner && owner !== S.reassign.id) { toast(`${seatName(id)} pertence a outra reserva.`); return; }
+    if (blockedSet().has(id)) { toast(`${seatName(id)} está bloqueado.`); return; }
+    S.reassign.seats.has(id) ? S.reassign.seats.delete(id) : S.reassign.seats.add(id);
+    updateSeats(); keepFocus(renderPanel); return;
+  }
+  if (owner) { S.focus = owner; S.edit = null; S.confirm = null; S.tab = "book"; renderAll(); return; }
+  if (!canWrite()) return;
+  if (blockedSet().has(id)) { toast(`${seatName(id)} está bloqueado neste evento.`); return; }
+  S.selection.has(id) ? S.selection.delete(id) : S.selection.add(id);
+  S.focus = null; S.edit = null; S.tab = "book";
+  updateSeats(); keepFocus(() => { renderTabs(); renderPanel(); });
+});
+
+document.addEventListener("click", async (e) => {
+  const evBtn = e.target.closest("[data-ev]"); if (evBtn) { selectEvent(evBtn.dataset.ev); return; }
+  const mode = e.target.closest("[data-mode]"); if (mode) { S.mode = mode.dataset.mode; S.selection.clear(); S.focus = null; renderAll(); return; }
+  const brush = e.target.closest("[data-brush]"); if (brush) { S.brush = brush.dataset.brush; renderModeBar(); return; }
+  const tab = e.target.closest("[data-tab]"); if (tab) { S.tab = tab.dataset.tab; renderAll(); return; }
+  const filt = e.target.closest("[data-filter]"); if (filt) { S.filter = filt.dataset.filter; renderPanel(); return; }
+  const foc = e.target.closest("[data-focus]"); if (foc) { S.focus = foc.dataset.focus; S.edit = null; S.confirm = null; S.tab = "book"; renderAll(); return; }
+  const btn = e.target.closest("[data-act]"); if (!btn) return;
+  const act = btn.dataset.act, ev = curEvent();
+  switch (act) {
+    case "ne-cancel": S.newEvent = null; renderEvents(); break;
+    case "ne-save": {
+      const d = S.newEvent; if (!d.name.trim() || !d.date) { toast("Indique o nome e a data do evento."); return; }
+      btn.disabled = true;
+      try { const id = await S.store.addEvent({ name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80", blocked: [], createdAt: new Date().toISOString() }); S.newEvent = null; selectEvent(id); toast("Evento criado."); }
+      catch (err) { btn.disabled = false; toast(errMsg(err)); }
+      break; }
+    case "ee-open": S.editEvent = { name: ev.name, date: ev.date, time: ev.time || "", notes: ev.notes || "", paper: ev.paper || "80" }; renderHeader(); break;
+    case "ee-cancel": S.editEvent = null; renderHeader(); break;
+    case "ee-save": {
+      const d = S.editEvent; if (!d.name.trim() || !d.date) { toast("Indique o nome e a data do evento."); return; }
+      await run(() => S.store.updateEvent(ev.id, { name: d.name.trim(), date: d.date, time: d.time || "", notes: d.notes.trim(), paper: d.paper || "80" }), "Evento atualizado.");
+      S.editEvent = null; renderAll(); break; }
+    case "ev-del": S.confirm = "del-event"; renderHeader(); break;
+    case "ev-del-yes": { const id = ev.id; S.confirm = null; btn.disabled = true;
+      await run(() => S.store.deleteEvent(id), "Evento apagado.");
+      if (!S.events.some(x => x.id === S.eventId)) selectEvent(pickDefaultEvent()); else renderAll(); break; }
+    case "confirm-no": S.confirm = null; renderAll(); break;
+    case "venue-open": openVenue(); break;
+    case "sel-clear": S.selection.clear(); updateSeats(); renderPanel(); break;
+    case "auto": {
+      const r = suggest(S.auto.n, S.auto.zone, S.auto.type);
+      if (!r.ids.length) { toast("Não há lugares livres com essas condições."); return; }
+      S.selection = new Set(r.ids); S.focus = null; updateSeats(); renderPanel();
+      if (r.ids.length < S.auto.n) toast(`Só encontrei ${r.ids.length} lugares livres com essas condições.`);
+      else if (r.split) toast("Não há um bloco contíguo suficiente; o grupo ficou dividido pelos melhores blocos livres.");
+      else toast(`Sugestão: ${formatSeats(r.ids)}`);
+      break; }
+    case "bk-create": {
+      const name = S.form.name.trim(); if (!name) { toast("Indique o nome de quem reserva."); $("nb-name") && $("nb-name").focus(); return; }
+      const seats = [...S.selection]; const eid = ev.id; btn.disabled = true;
+      try {
+        const newId = await S.store.addBooking(eid, { name, contact: S.form.contact.trim(), notes: S.form.notes.trim(), seats, checkedIn: false, checkedAt: null, createdAt: new Date().toISOString() });
+        S.selection.clear(); S.form = { name: "", contact: "", notes: "" }; if (newId) { S.focus = newId; S.edit = null; } toast(`Reserva criada: ${name} · ${seats.length} lugar${seats.length === 1 ? "" : "es"}`); renderAll();
+      } catch (err) { if (err.code === "conflict") err.seats.forEach(x => S.selection.delete(x)); toast(errMsg(err)); renderAll(); }
+      break; }
+    case "checkin": {
+      const b = S.bookings.find(x => x.id === btn.dataset.id); if (!b) return;
+      const v = enteredCount(b) < (b.seats || []).length, now = new Date().toISOString();
+      const entered = {}; if (v) (b.seats || []).forEach(id => entered[id] = (b.entered && b.entered[id]) || now);
+      await run(() => S.store.updateBooking(ev.id, b.id, { checkedIn: v, checkedAt: v ? now : null, entered: v ? entered : null }), v ? `Entrada registada: ${b.name}` : `Entrada anulada: ${b.name}`);
+      break; }
+    case "ed-save": {
+      const e2 = S.edit; if (!e2 || !e2.name.trim()) { toast("O nome não pode ficar vazio."); return; }
+      await run(() => S.store.updateBooking(ev.id, S.focus, { name: e2.name.trim(), contact: e2.contact.trim(), notes: e2.notes.trim() }), "Reserva atualizada.");
+      S.edit = null; renderPanel(); break; }
+    case "focus-close": S.focus = null; S.edit = null; S.confirm = null; renderAll(); break;
+    case "bk-cancel": S.confirm = "cancel:" + S.focus; renderPanel(); break;
+    case "bk-cancel-yes": { const id = S.focus, b = S.bookings.find(x => x.id === id); S.confirm = null;
+      await run(() => S.store.deleteBooking(ev.id, id), `Reserva cancelada${b ? ": " + b.name : ""}.`); S.focus = null; renderAll(); break; }
+    case "re-open": { const b = S.bookings.find(x => x.id === S.focus); S.reassign = { id: b.id, name: b.name, seats: new Set(b.seats || []) }; S.mode = "book"; S.selection.clear(); renderAll(); break; }
+    case "re-cancel": S.reassign = null; renderAll(); break;
+    case "re-save": { const r = S.reassign; btn.disabled = true;
+      try { const b0 = S.bookings.find(x => x.id === r.id) || {}; const seatsNew = [...r.seats];
+        await S.store.updateBooking(ev.id, r.id, { seats: seatsNew, tickets: (b0.tickets || []).filter(t => r.seats.has(t.s)) }); S.reassign = null;
+        toast((b0.tickets || []).some(t => !r.seats.has(t.s)) || seatsNew.some(id => !(b0.tickets || []).some(t => t.s === id)) && (b0.tickets || []).length ? "Lugares atualizados. Imprima os bilhetes dos lugares novos; os dos lugares retirados deixaram de ser válidos." : "Lugares atualizados."); }
+      catch (err) { if (err.code === "conflict") err.seats.forEach(x => r.seats.delete(x)); toast(errMsg(err)); }
+      renderAll(); break; }
+    case "tk-open": openTickets([btn.dataset.id]); break;
+    case "tk-all": openTickets(S.bookings.slice().sort((a, b) => firstPos(a) - firstPos(b)).map(b => b.id)); break;
+    case "tk-close": $("ticketOverlay").hidden = true; S.tk = null; break;
+    case "tk-print": printTickets(btn); break;
+    case "logo-del": await run(() => S.store.setLogo(ev.id, null), "Logotipo removido."); renderHeader(); break;
+    case "scan-go": { const v = S.scanInput; S.scanInput = ""; validateCode(v); break; }
+    case "exp-list": exportCsv("list"); break;
+    case "exp-seats": exportCsv("seats"); break;
+    case "venue-cancel": $("venueOverlay").hidden = true; break;
+    case "venue-save": saveVenue(); break;
+  }
+});
+$("newEventBtn").addEventListener("click", () => { S.newEvent = { name: "", date: todayISO(), time: "21:00", notes: "", paper: "80" }; renderEvents(); const n = $("ne-name"); n && n.focus(); });
+
+/* ---------- Venue plan editor ---------- */
+function openVenue() {
+  const o = $("venueOverlay");
+  const zs = S.venue.zones.map(z => `<div class="zone-cfg">
+    <div class="field"><label for="vz-${z.id}-name">Nome da zona</label><input id="vz-${z.id}-name" value="${esc(z.name)}"></div>
+    <div class="field"><label for="vz-${z.id}-rows">Filas (uma por linha, do palco para trás)</label>
+    <textarea id="vz-${z.id}-rows" class="mono" rows="${Math.min(10, (z.rows || []).length + 1)}" spellcheck="false">${esc((z.rows || []).map(r => `${r.label}: ${r.items}`).join("\n"))}</textarea></div></div>`).join("");
+  o.innerHTML = `<div class="card" role="dialog" aria-label="Planta da sala"><div class="card-head"><h3>Planta da sala</h3></div>
+    <p class="small muted" style="margin:0">Cada linha descreve uma fila da esquerda para a direita, como na planta. <span class="mono">18-2:2</span> são os lugares 18 a 2 de 2 em 2; <span class="mono">20-1</span> são os lugares 20 a 1; cada <span class="mono">_</span> é um espaço vazio (corredor).<br>Exemplo: <span class="mono">A: 18-2:2 _ _ 1-17:2</span></p>
+    ${zs}
+    <p class="small" style="margin:0;color:var(--warn)" id="vz-warn"></p>
+    <div class="row-btns"><button class="btn primary sm" data-act="venue-save" type="button">Guardar planta</button><button class="btn ghost sm" data-act="venue-cancel" type="button">Cancelar</button></div></div>`;
+  o.hidden = false; saveVenue.confirmed = false;
+}
+async function saveVenue() {
+  const w = $("vz-warn"); let zones;
+  try {
+    const seen = new Set();
+    zones = S.venue.zones.map(z => {
+      const rows = $(`vz-${z.id}-rows`).value.split(/\n/).map(l => l.trim()).filter(Boolean).map(l => {
+        const m = l.match(/^([A-Za-z]{1,3})\s*:\s*(.+)$/);
+        if (!m) throw new Error(`a linha "${l}" deve começar pela letra da fila e dois pontos`);
+        const label = m[1].toUpperCase();
+        if (seen.has(z.id + label)) throw new Error(`a fila ${label} aparece duas vezes em ${z.name}`);
+        seen.add(z.id + label);
+        try { if (!parseRow(m[2]).some(n => n != null)) throw new Error("não tem lugares"); } catch (e) { throw new Error(`fila ${label}: ${e.message}`); }
+        return { label, items: m[2].trim().replace(/\s+/g, " ") };
+      });
+      return { id: z.id, name: $(`vz-${z.id}-name`).value.trim() || z.name, rows };
+    });
+  } catch (e) { w.textContent = "Não foi possível ler a planta: " + e.message + "."; return; }
+  const lay = buildLayout({ zones });
+  const orphan = []; S.bookings.forEach(b => (b.seats || []).forEach(id => { if (!lay.idx.has(id)) orphan.push(id); }));
+  if (orphan.length && !saveVenue.confirmed) { w.textContent = `Atenção: ${orphan.length} lugares reservados neste evento deixariam de existir. Clique em Guardar planta outra vez para confirmar.`; saveVenue.confirmed = true; return; }
+  saveVenue.confirmed = false;
+  S.venue = { ...S.venue, zones };
+  $("venueOverlay").hidden = true; renderAll();
+  await run(() => S.store.saveVenue(S.venue), "Planta da sala guardada.");
+}
+
+/* ---------- Tickets ---------- */
+const PAPERS = { "80": { w: 80, print: 72, name: "80 mm" }, "58": { w: 58, print: 48, name: "58 mm" } };
+const DPMM = 8; /* 203 dpi thermal heads */
+const paperOf = () => { const e = curEvent(); return e && PAPERS[e.paper] ? e.paper : "80"; };
+const firstPos = (b) => { const s = S.layout.idx.get((b.seats || [])[0]); return s ? s.zi * 1e4 + s.ri * 100 + s.pos : 1e9; };
+async function processLogo(file) {
+  const url = URL.createObjectURL(file);
+  let img; try { img = await loadImage(url); } finally { URL.revokeObjectURL(url); }
+  const r = Math.min(1, 576 / img.width, 300 / img.height), w = Math.max(1, Math.round(img.width * r)), h = Math.max(1, Math.round(img.height * r));
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d");
+  x.fillStyle = "#fff"; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h);
+  for (let i = 0; i < d.data.length; i += 4) { const l = 0.299 * d.data[i] + 0.587 * d.data[i + 1] + 0.114 * d.data[i + 2]; d.data[i] = d.data[i + 1] = d.data[i + 2] = l; }
+  x.putImageData(d, 0, 0);
+  let data = c.toDataURL("image/png"); if (data.length > 180000) data = c.toDataURL("image/jpeg", 0.85);
+  return data;
+}
+async function ensureTickets(ev, b) {
+  const seats = b.seats || [];
+  if (S.store.serverTickets) return (b.tickets || []).filter(t => seats.includes(t.s));
+  const have = new Map((b.tickets || []).filter(t => seats.includes(t.s)).map(t => [t.s, t.c]));
+  let changed = have.size !== (b.tickets || []).length;
+  for (const id of seats) if (!have.has(id)) { let c; do { c = makeCode(ev.id, id); } while (S.ticketIndex.has(c)); have.set(id, c); changed = true; }
+  const tickets = seats.map(id => ({ s: id, c: have.get(id) }));
+  if (changed) await S.store.updateBooking(ev.id, b.id, { tickets });
+  return tickets;
+}
+function wrapLines(x, text, maxW, maxLines) {
+  const words = String(text || "").split(/\s+/).filter(Boolean), lines = []; let cur = "";
+  for (const w of words) { const t = cur ? cur + " " + w : w; if (x.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; } }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) { lines.length = maxLines; let l = lines[maxLines - 1]; while (l.length > 1 && x.measureText(l + "…").width > maxW) l = l.slice(0, -1); lines[maxLines - 1] = l + "…"; }
+  return lines;
+}
+function drawTicket(t, paperKey) {
+  const W = PAPERS[paperKey].print * DPMM, k = W / 576, px = (n) => Math.round(n * k);
+  const c = document.createElement("canvas"); c.width = W; c.height = px(2200);
+  const x = c.getContext("2d");
+  x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.fillStyle = "#000"; x.strokeStyle = "#000"; x.textAlign = "center";
+  const dash = (y) => { x.save(); x.setLineDash([px(10), px(7)]); x.lineWidth = Math.max(2, px(2)); x.beginPath(); x.moveTo(px(6), y); x.lineTo(W - px(6), y); x.stroke(); x.restore(); };
+  let y = px(6);
+  if (t.logo) { const r = Math.min(W * 0.9 / t.logo.width, px(190) / t.logo.height); const lw = t.logo.width * r, lh = t.logo.height * r; x.drawImage(t.logo, (W - lw) / 2, y, lw, lh); y += lh + px(10); }
+  x.font = `700 ${px(40)}px "Bricolage Grotesque", "IBM Plex Sans", sans-serif`;
+  for (const line of wrapLines(x, t.eventName, W - px(20), 3)) { y += px(44); x.fillText(line, W / 2, y); }
+  x.font = `500 ${px(25)}px "IBM Plex Sans", sans-serif`; y += px(38); x.fillText(t.dateLine, W / 2, y);
+  y += px(24); dash(y);
+  x.font = `700 ${px(28)}px "IBM Plex Sans", sans-serif`; y += px(46); x.fillText(t.zone.toUpperCase().split("").join(" "), W / 2, y);
+  const cl = W * 0.28, cr = W * 0.72;
+  x.font = `600 ${px(21)}px "IBM Plex Sans", sans-serif`; y += px(38); x.fillText("FILA", cl, y); x.fillText("LUGAR", cr, y);
+  x.font = `700 ${px(104)}px "IBM Plex Sans", sans-serif`; y += px(100); x.fillText(t.row, cl, y); x.fillText(pad(t.n), cr, y);
+  x.save(); x.lineWidth = Math.max(2, px(2)); x.beginPath(); x.moveTo(W / 2, y - px(118)); x.lineTo(W / 2, y + px(4)); x.stroke(); x.restore();
+  if (t.type !== "normal") {
+    const label = TYPE_NAMES[t.type].toUpperCase(); x.font = `700 ${px(21)}px "IBM Plex Sans", sans-serif`;
+    const tw = x.measureText(label).width + px(28); y += px(22);
+    x.fillRect((W - tw) / 2, y, tw, px(38)); x.fillStyle = "#fff"; x.fillText(label, W / 2, y + px(27)); x.fillStyle = "#000"; y += px(38);
+  }
+  y += px(26); dash(y);
+  x.font = `400 ${px(23)}px "IBM Plex Sans", sans-serif`;
+  for (const line of wrapLines(x, "Reserva: " + t.holder, W - px(20), 2)) { y += px(34); x.fillText(line, W / 2, y); }
+  y += px(22);
+  const probe = document.createElement("canvas"); JsBarcode(probe, t.code, { format: "CODE128", displayValue: false, margin: 0, width: 1, height: 10 });
+  const mod = Math.max(1, Math.floor(W / (probe.width + 22)));
+  const bc = document.createElement("canvas"); JsBarcode(bc, t.code, { format: "CODE128", displayValue: false, margin: 0, width: mod, height: px(130), background: "#ffffff", lineColor: "#000000" });
+  x.imageSmoothingEnabled = false; x.drawImage(bc, Math.floor((W - bc.width) / 2), Math.round(y)); y += bc.height;
+  x.font = `500 ${px(27)}px "IBM Plex Mono", monospace`; y += px(36); x.fillText(prettyCode(t.code), W / 2, y);
+  y += px(22); dash(y);
+  x.font = `400 ${px(19)}px "IBM Plex Sans", sans-serif`;
+  y += px(32); x.fillText("Bilhete individual, válido só para este lugar.", W / 2, y);
+  y += px(26); x.fillText("Bilheteira Plebeus", W / 2, y);
+  y += px(30);
+  const out = document.createElement("canvas"); out.width = W; out.height = Math.ceil(y);
+  out.getContext("2d").drawImage(c, 0, 0); return out;
+}
+async function openTickets(bids) {
+  const ev = curEvent(); if (!ev) return;
+  const o = $("ticketOverlay");
+  S.tk = { bids, items: [], loading: true, err: null }; o.hidden = false; renderTickets();
+  try {
+    await loadScript(LIB.barcode);
+    const fonts = ['700 40px "Bricolage Grotesque"', '700 40px "IBM Plex Sans"', '600 20px "IBM Plex Sans"', '400 20px "IBM Plex Sans"', '500 20px "IBM Plex Mono"'];
+    try { await Promise.all(fonts.map(f => document.fonts.load(f))); } catch (e) {}
+    const items = [];
+    for (const bid of bids) {
+      const b = S.bookings.find(x => x.id === bid); if (!b) continue;
+      const tickets = await ensureTickets(ev, b);
+      tickets.forEach(tk => { const s = S.layout.idx.get(tk.s); if (s) items.push({ seat: s, code: tk.c, holder: b.name }); });
+    }
+    if (!S.tk) return;
+    S.tk.items = items; S.tk.loading = false;
+    S.tk.logoImg = S.logo ? await loadImage(S.logo).catch(() => null) : null;
+  } catch (e) { if (S.tk) { S.tk.loading = false; S.tk.err = e && e.code ? errMsg(e) : "Não foi possível carregar o gerador de códigos de barras. Verifique a ligação à internet e tente de novo."; } }
+  renderTickets();
+}
+function ticketData(it) {
+  const ev = curEvent();
+  return { logo: S.tk.logoImg, eventName: ev.name, dateLine: fmtDate(ev.date, { weekday: "short", day: "numeric", month: "long", year: "numeric" }) + (ev.time ? " · " + ev.time : ""),
+    zone: it.seat.zoneName, row: it.seat.row, n: it.seat.n, type: seatType(it.seat.id), holder: it.holder, code: it.code };
+}
+function renderTickets() {
+  const o = $("ticketOverlay"), tk = S.tk; if (!tk) return;
+  let body;
+  if (tk.loading) body = `<p class="muted" style="margin:0">A preparar os bilhetes…</p>`;
+  else if (tk.err) body = `<p style="margin:0;color:var(--velvet)">${esc(tk.err)}</p>`;
+  else if (!tk.items.length) body = `<p class="muted" style="margin:0">Não há lugares para imprimir.</p>`;
+  else {
+    const shown = tk.items.slice(0, 12).map(it => `<img alt="Bilhete ${esc(seatName(it.seat.id))}" src="${drawTicket(ticketData(it), paperOf()).toDataURL("image/png")}">`).join("");
+    body = `<div class="tk-grid w${paperOf()}">${shown}</div>${tk.items.length > 12 ? `<p class="small muted" style="margin:0">A pré-visualização mostra 12 de ${tk.items.length} bilhetes; o PDF inclui todos.</p>` : ""}
+      ${S.logo ? "" : `<p class="small muted" style="margin:0">Este evento ainda não tem logotipo. Pode adicioná-lo em <b>Editar</b> no topo do evento.</p>`}`;
+  }
+  const n = tk.items.length;
+  o.innerHTML = `<div class="card" role="dialog" aria-label="Bilhetes" style="width:min(720px,100%)">
+    <div class="card-head"><h3>${n ? n + " bilhete" + (n === 1 ? "" : "s") : "Bilhetes"}</h3><span class="small muted">Rolo de ${PAPERS[paperOf()].name} · altere em Editar evento</span></div>
+    ${body}
+    <p class="small muted" style="margin:0">Imprime na impressora predefinida do computador. Se a Bilheteira foi aberta pelo atalho, imprime de imediato, sem janela de confirmação.</p>
+    <div class="row-btns"><button class="btn primary" data-act="tk-print" type="button" ${n && !tk.loading ? "" : "disabled"}>Imprimir ${n} bilhete${n === 1 ? "" : "s"}</button><button class="btn ghost" data-act="tk-close" type="button">Fechar</button></div></div>`;
+}
+async function printTickets(btn) {
+  const tk = S.tk; if (!tk || !tk.items.length) return;
+  btn.disabled = true;
+  const P = PAPERS[paperOf()], area = $("printArea");
+  const canvases = tk.items.map(it => drawTicket(ticketData(it), paperOf()));
+  const hmm = Math.ceil(Math.max(...canvases.map(c => c.height)) / DPMM);
+  $("pageStyle").textContent = `@page{size:${P.w}mm ${hmm}mm;margin:0}`;
+  area.innerHTML = "";
+  for (const c of canvases) { const img = new Image(); img.style.width = P.print + "mm"; img.src = c.toDataURL("image/png"); area.appendChild(img); }
+  try { await Promise.all([...area.images || area.querySelectorAll("img")].map(i => i.decode ? i.decode().catch(() => {}) : null)); } catch (e) {}
+  window.print();
+  setTimeout(() => { area.innerHTML = ""; }, 1500);
+  btn.disabled = false;
+  toast(`${canvases.length} bilhete${canvases.length === 1 ? "" : "s"} enviado${canvases.length === 1 ? "" : "s"} para a impressora.`);
+}
+
+/* ---------- Door validation ---------- */
+let actx = null;
+function beep(ok) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = ok ? "sine" : "square"; o.frequency.value = ok ? 880 : 200; g.gain.value = 0.06;
+    o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + (ok ? 0.12 : 0.35));
+  } catch (e) {}
+}
+const hhmm = (iso) => iso ? new Date(iso).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "";
+async function validateCode(raw) {
+  const code = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), ev = curEvent();
+  if (!code || !ev) return;
+  if (!canScan()) { toast("Não tem permissão para registar entradas."); return; }
+  let res;
+  if (S.store.validate) {
+    let r = null;
+    try { r = await S.store.validate(ev.id, code); } catch (e) { res = { kind: "bad", title: "Não foi possível registar", detail: errMsg(e) }; }
+    if (r && r.status === "ok") res = { kind: "ok", title: `Entrada válida · ${seatName(r.seat_id)}`, detail: `${r.name}${r.left ? ` · faltam ${r.left} da mesma reserva` : ""}${seatType(r.seat_id) !== "normal" ? " · " + TYPE_NAMES[seatType(r.seat_id)] : ""}` };
+    else if (r && r.status === "used") res = { kind: "used", title: "Bilhete já utilizado", detail: `${seatName(r.seat_id)} · ${r.name} · entrou às ${hhmm(r.entered_at)}` };
+    else if (r && r.status === "other") res = { kind: "bad", title: "Bilhete de outro evento", detail: `${r.event_name} · ${fmtDate(r.event_date, { day: "numeric", month: "long" })}${r.event_time ? " · " + r.event_time : ""}` };
+    else if (r) res = code.slice(0, 4) === evPrefix(ev.id) ? { kind: "bad", title: "Bilhete anulado", detail: "Este bilhete foi emitido para este evento, mas a reserva foi cancelada ou o lugar foi alterado." } : { kind: "bad", title: "Bilhete inválido", detail: `O código ${prettyCode(code)} não corresponde a nenhum bilhete.` };
+    res.code = code; res.at = new Date().toISOString();
+    S.scan = res; S.scanLog = [res, ...S.scanLog].slice(0, 15);
+    beep(res.kind === "ok"); renderPanel();
+    const inp0 = $("scan-input"); if (inp0) inp0.focus({ preventScroll: true });
+    return;
+  }
+  const hit = S.ticketIndex.get(code);
+  if (hit) {
+    const b = S.bookings.find(x => x.id === hit.bid);
+    if (seatIn(b, hit.seat)) res = { kind: "used", title: "Bilhete já utilizado", detail: `${seatName(hit.seat)} · ${b.name}${(b.entered && b.entered[hit.seat]) || b.checkedAt ? " · entrou às " + hhmm((b.entered && b.entered[hit.seat]) || b.checkedAt) : ""}` };
+    else {
+      const now = new Date().toISOString(), all = (b.seats || []).every(id => id === hit.seat || seatIn(b, id));
+      try {
+        await S.store.updateBooking(ev.id, b.id, { entered: { [hit.seat]: now }, checkedIn: all, checkedAt: all ? now : (b.checkedAt || null) });
+        const left = (b.seats || []).filter(id => id !== hit.seat && !seatIn(b, id)).length;
+        res = { kind: "ok", title: `Entrada válida · ${seatName(hit.seat)}`, detail: `${b.name}${left ? ` · faltam ${left} da mesma reserva` : ""}${seatType(hit.seat) !== "normal" ? " · " + TYPE_NAMES[seatType(hit.seat)] : ""}` };
+      } catch (e) { res = { kind: "bad", title: "Não foi possível registar", detail: errMsg(e) }; }
+    }
+  } else {
+    const other = S.events.find(e => e.id !== ev.id && evPrefix(e.id) === code.slice(0, 4));
+    if (other) res = { kind: "bad", title: "Bilhete de outro evento", detail: `${other.name} · ${fmtDate(other.date, { day: "numeric", month: "long" })}${other.time ? " · " + other.time : ""}` };
+    else if (code.slice(0, 4) === evPrefix(ev.id)) res = { kind: "bad", title: "Bilhete anulado", detail: "Este bilhete foi emitido para este evento, mas a reserva foi cancelada ou o lugar foi alterado." };
+    else res = { kind: "bad", title: "Bilhete inválido", detail: `O código ${prettyCode(code)} não corresponde a nenhum bilhete.` };
+  }
+  res.code = code; res.at = new Date().toISOString();
+  S.scan = res; S.scanLog = [res, ...S.scanLog].slice(0, 15);
+  beep(res.kind === "ok"); renderPanel();
+  const inp = $("scan-input"); if (inp) inp.focus({ preventScroll: true });
+}
+function scanPanel() {
+  const total = S.bookings.reduce((a, b) => a + (b.seats || []).length, 0), inn = S.bookings.reduce((a, b) => a + enteredCount(b), 0);
+  const r = S.scan, icon = { ok: "✓", used: "!", bad: "✕" };
+  let verdict = "";
+  if (r && r.kind === "wait") verdict = `<p class="muted" style="margin:0">A ler a fotografia…</p>`;
+  else if (r) verdict = `<div class="verdict ${r.kind}" role="status"><span class="ic" aria-hidden="true">${icon[r.kind]}</span><b>${esc(r.title)}</b><span>${esc(r.detail)}</span></div>`;
+  const log = S.scanLog.map(l => `<div><span class="mono muted">${hhmm(l.at)}</span><span class="dot ${l.kind}"></span><span>${esc(l.title)}${l.detail ? " · " + esc(l.detail) : ""}</span></div>`).join("");
+  return `<div class="card">
+    <div class="card-head"><h3>Validar entradas</h3><span class="mono small">${inn} / ${total}</span></div>
+    ${canScan() ? `<div class="field scan-in"><label for="scan-input">Leia o código de barras com o leitor ou escreva o código</label>
+      <input id="scan-input" data-f="scanInput" value="${esc(S.scanInput)}" placeholder="Código do bilhete" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"></div>
+    <div class="row-btns"><button class="btn primary sm" data-act="scan-go" type="button">Validar</button>
+      <label class="btn sm" for="scan-photo">Fotografar bilhete</label><input type="file" id="scan-photo" accept="image/*" capture="environment" hidden></div>
+    ${verdict}
+    <p class="small muted" style="margin:0">Um leitor de códigos de barras USB ou Bluetooth funciona como teclado: com o cursor neste campo, cada leitura valida o bilhete de imediato. No telemóvel, use “Fotografar bilhete”.</p>`
+    : `<p class="muted" style="margin:0">Não tem permissão para registar entradas.</p>`}
+  </div>
+  ${log ? `<div class="card"><div class="card-head"><h3>Últimas leituras</h3></div><div class="log">${log}</div></div>` : ""}`;
+}
+function lumOf(img, rot, maxDim) {
+  const r = Math.min(1, maxDim / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+  const w0 = Math.round((img.naturalWidth || img.width) * r), h0 = Math.round((img.naturalHeight || img.height) * r);
+  const w = rot ? h0 : w0, h = rot ? w0 : h0;
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d");
+  if (rot) { x.translate(w, 0); x.rotate(Math.PI / 2); }
+  x.drawImage(img, 0, 0, w0, h0);
+  const d = x.getImageData(0, 0, w, h).data, lum = new Uint8ClampedArray(w * h);
+  for (let i = 0, j = 0; j < lum.length; i += 4, j++) lum[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+  return { lum, w, h };
+}
+async function decodePhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImage(url);
+    if ("BarcodeDetector" in window) {
+      try { const det = new window.BarcodeDetector({ formats: ["code_128"] }); const found = await det.detect(img); if (found && found.length) return found[0].rawValue; } catch (e) {}
+    }
+    await loadScript(LIB.zxing);
+    const Z = window.ZXing; const hints = new Map();
+    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.CODE_128]); hints.set(Z.DecodeHintType.TRY_HARDER, true);
+    for (const size of [1600, 1000]) for (const rot of [0, 1]) {
+      const { lum, w, h } = lumOf(img, rot, size);
+      try {
+        const src = new Z.RGBLuminanceSource(lum, w, h, w, h, 0, 0);
+        const reader = new Z.MultiFormatReader(); reader.setHints(hints);
+        return reader.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(src)), hints).getText();
+      } catch (e) {}
+    }
+    return null;
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* ---------- Export ---------- */
+function csvCell(v) { const s = String(v ?? ""); return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+async function exportCsv(kind) {
+  const ev = curEvent(); if (!ev) return;
+  let rows;
+  if (kind === "list") {
+    rows = [["Nome", "Contacto", "N.º lugares", "Lugares", "Notas", "Entradas", "Hora de entrada"]];
+    S.bookings.slice().sort((a, b) => a.name.localeCompare(b.name, "pt")).forEach(b => { const k = enteredCount(b), n = (b.seats || []).length; rows.push([b.name, b.contact, n, formatSeats(b.seats || []), b.notes, k === n ? "Sim" : k ? `${k}/${n}` : "Não", b.checkedAt ? new Date(b.checkedAt).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : ""]); });
+  } else {
+    rows = [["Zona", "Fila", "Lugar", "Tipo", "Estado", "Nome", "Contacto", "Código do bilhete"]];
+    const blocked = blockedSet();
+    S.layout.zones.forEach(z => z.rowsArr.forEach(r => r.seats.forEach(s => {
+      const b = S.bookings.find(x => x.id === S.seatOwner.get(s.id));
+      const tk = b && (b.tickets || []).find(t => t.s === s.id);
+      rows.push([z.name, s.row, pad(s.n), TYPE_NAMES[seatType(s.id)], b ? (seatIn(b, s.id) ? "Entrou" : "Reservado") : blocked.has(s.id) ? "Bloqueado" : "Livre", b ? b.name : "", b ? b.contact : "", tk ? tk.c : ""]);
+    })));
+  }
+  const csv = "﻿" + rows.map(r => r.map(csvCell).join(";")).join("\r\n");
+  const slug = (ev.name || "evento").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+  const filename = `${kind === "list" ? "reservas" : "lugares"}-${slug}-${ev.date}.csv`;
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000); toast("Ficheiro guardado na pasta de transferências.");
+}
+
+/* ---------- Boot ---------- */
+function pickDefaultEvent() {
+  if (S.eventId && S.events.some(e => e.id === S.eventId)) return S.eventId;
+  const t = todayISO(); const up = S.events.find(e => (e.date || "") >= t);
+  return up ? up.id : (S.events.length ? S.events[S.events.length - 1].id : null);
+}
+function start(store) {
+  S.store = store;
+  store.onVenue((v) => {
+    if (v && Array.isArray(v.zones) && v.zones.length && v.zones.every(z => Array.isArray(z.rows))) {
+      if (!S.pendingVenue) S.venue = { zones: v.zones, types: v.types || {} };
+    }
+    renderAll();
+  }, (err) => toast(errMsg(err)));
+  store.onEvents((list) => {
+    S.events = list.sort((a, b) => ((a.date || "") + (a.time || "")).localeCompare((b.date || "") + (b.time || "")));
+    S.events.forEach((e, i) => { if (S.pendingBlocked[e.id]) S.events[i] = { ...e, blocked: S.pendingBlocked[e.id] }; });
+    S.ready = true;
+    const want = pickDefaultEvent();
+    if (want !== S.eventId || !S.unsubB) selectEvent(want); else renderAll();
+  }, (err) => toast(errMsg(err)));
+}
+
+/* ---------- Sign-in and team ---------- */
+const sb = (window.supabase && SUPABASE_URL.startsWith("https://")) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
+const G = { mode: "in", msg: "", busy: false };
+function gate(html) { $("gateCard").innerHTML = html; $("gate").hidden = false; }
+function renderLogin() {
+  const up = G.mode === "up";
+  gate(`<h2>Bilheteira <span>Plebeus</span></h2>
+    <p class="muted" style="margin:0">${up ? "Crie a sua conta. Depois de confirmar o email, o responsável tem de a autorizar na lista da equipa." : "Entre com a conta da equipa."}</p>
+    <form id="loginForm" class="panel" style="gap:10px">
+      <div class="field"><label for="lg-email">Email</label><input id="lg-email" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="lg-pass">Palavra-passe</label><input id="lg-pass" type="password" autocomplete="${up ? "new-password" : "current-password"}" minlength="6" required></div>
+      ${G.msg ? `<p class="small" style="margin:0">${G.msg}</p>` : ""}
+      <div class="row-btns"><button class="btn primary" type="submit" ${G.busy ? "disabled" : ""}>${up ? "Criar conta" : "Entrar"}</button>
+      <button class="btn ghost sm" type="button" id="lg-switch">${up ? "Já tenho conta" : "Criar conta"}</button></div>
+    </form>`);
+  $("lg-switch").onclick = () => { G.mode = up ? "in" : "up"; G.msg = ""; renderLogin(); };
+  $("loginForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $("lg-email").value.trim().toLowerCase(), password = $("lg-pass").value;
+    G.busy = true; G.msg = ""; renderLogin(); $("lg-email").value = email;
+    if (up) {
+      const r = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+      G.busy = false;
+      if (r.error) G.msg = esc(r.error.message);
+      else if (r.data.session) { enter(r.data.session); return; }
+      else { G.mode = "in"; G.msg = `Enviámos um email de confirmação para <b>${esc(email)}</b>. Clique no link do email (se abrir uma página de erro, ignore: a conta fica confirmada) e depois entre aqui.`; }
+      renderLogin(); $("lg-email").value = email; return;
+    }
+    const r = await sb.auth.signInWithPassword({ email, password });
+    G.busy = false;
+    if (r.error) { G.msg = /confirm/i.test(r.error.message) ? "Ainda não confirmou o email. Abra o link que recebeu e tente de novo." : "Email ou palavra-passe incorretos."; renderLogin(); $("lg-email").value = email; return; }
+    enter(r.data.session);
+  };
+}
+async function enter(session) {
+  const email = (session.user.email || "").toLowerCase();
+  const r = await sb.from("staff").select("email,is_admin").eq("email", email).maybeSingle();
+  if (r.error || !r.data) {
+    gate(`<h2>Conta por autorizar</h2><p style="margin:0">A conta <b>${esc(email)}</b> ainda não faz parte da equipa da bilheteira. Peça a um responsável que a adicione em <b>Equipa</b>.</p>
+      <div class="row-btns"><button class="btn sm" type="button" id="gt-retry">Tentar de novo</button><button class="btn ghost sm" type="button" id="gt-out">Sair</button></div>`);
+    $("gt-retry").onclick = () => enter(session); $("gt-out").onclick = () => sb.auth.signOut().then(() => location.reload());
+    return;
+  }
+  S.me = { email, admin: !!r.data.is_admin };
+  S.readOnly = !S.me.admin;
+  document.body.classList.toggle("role-user", !S.me.admin);
+  if (!S.me.admin) S.tab = "scan";
+  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="staff-open">Equipa</button>` : ""}<button class="btn ghost sm" type="button" id="logout">Sair</button>`;
+  $("logout").onclick = () => sb.auth.signOut().then(() => location.reload());
+  $("gate").hidden = true;
+  if (!S.store) start(makeSupaStore(sb));
+}
+async function renderStaff() {
+  const o = $("staffOverlay");
+  const r = await sb.from("staff").select("email,is_admin").order("email");
+  const roleSel = (x) => `<select data-staff-role="${esc(x.email)}" aria-label="Perfil de ${esc(x.email)}"><option value="admin" ${x.is_admin ? "selected" : ""}>Admin</option><option value="user" ${x.is_admin ? "" : "selected"}>User</option></select>`;
+  const rows = (r.data || []).map(x => `<div class="staff-row"><span>${esc(x.email)}</span>
+    ${x.email === S.me.email ? `<span class="role-pill admin">Admin</span><span class="small muted">(você)</span>` : `${roleSel(x)}<button class="btn ghost sm" type="button" data-staff-del="${esc(x.email)}">Remover</button>`}</div>`).join("");
+  o.innerHTML = `<div class="card" role="dialog" aria-label="Equipa"><div class="card-head"><h3>Equipa</h3></div>
+    <p class="small muted" style="margin:0">Só os emails desta lista entram na bilheteira. Cada pessoa cria a sua conta no ecrã de entrada com o mesmo email.<br><b>Admin</b>: acesso total. <b>User</b>: apenas valida entradas nos eventos.</p>
+    <div>${rows}</div>
+    <div class="grid2" style="align-items:end"><div class="field"><label for="st-email">Adicionar email</label><input id="st-email" type="email" placeholder="nome@exemplo.pt"></div>
+    <div class="field"><label for="st-role">Perfil</label><select id="st-role"><option value="user" selected>User — só valida entradas</option><option value="admin">Admin — acesso total</option></select></div></div>
+    <div class="row-btns"><button class="btn primary sm" type="button" id="st-add">Adicionar</button><button class="btn ghost sm" type="button" id="st-close">Fechar</button></div></div>`;
+  o.hidden = false;
+  $("st-close").onclick = () => { o.hidden = true; };
+  $("st-add").onclick = async () => {
+    const email = $("st-email").value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(email)) { toast("Escreva um email válido."); return; }
+    const x = await sb.from("staff").insert({ email, is_admin: $("st-role").value === "admin" });
+    if (x.error) toast(x.error.code === "23505" ? "Esse email já está na equipa." : "Não foi possível adicionar."); else { toast("Adicionado à equipa."); renderStaff(); }
+  };
+  o.querySelectorAll("[data-staff-role]").forEach(sel => sel.onchange = async () => {
+    const x = await sb.from("staff").update({ is_admin: sel.value === "admin" }).eq("email", sel.dataset.staffRole);
+    if (x.error) { toast("Não foi possível alterar o perfil."); renderStaff(); } else toast(`${sel.dataset.staffRole} passou a ${sel.value === "admin" ? "Admin" : "User"}. A alteração aplica-se quando essa pessoa voltar a abrir a bilheteira.`);
+  });
+  o.querySelectorAll("[data-staff-del]").forEach(b => b.onclick = async () => {
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirmar remoção"; b.classList.add("danger"); return; }
+    const x = await sb.from("staff").delete().eq("email", b.dataset.staffDel);
+    if (x.error) toast("Não foi possível remover."); else renderStaff();
+  });
+}
+document.addEventListener("click", (e) => { if (e.target.closest('[data-act="staff-open"]')) renderStaff(); });
+
+renderAll();
+(async () => {
+  if (!sb) {
+    S.demo = true; $("gate").hidden = true;
+    const b = $("banner"); b.textContent = "Modo de demonstração: falta configurar a ligação à base de dados. As alterações não ficam guardadas."; b.hidden = false;
+    start(makeMemStore(DEMO)); return;
+  }
+  const { data } = await sb.auth.getSession();
+  if (data && data.session) enter(data.session); else renderLogin();
+})();
+})();
+</script>
+</body>
+</html>
