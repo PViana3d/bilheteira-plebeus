@@ -239,6 +239,16 @@ body.role-user #mapCard{display:none}
 .xrow strong{display:block}
 .cash-on{background:color-mix(in srgb,var(--ok) 16%,transparent)!important;color:var(--ok)!important}
 .verdict.due{background:color-mix(in srgb,var(--warn) 16%,transparent)} .verdict.due .ic{background:var(--warn)}
+.badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--velvet);color:var(--velvet-ink);font-size:11px;font-weight:700;text-align:center;line-height:18px}
+.req-box{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:8px;background:color-mix(in srgb,var(--brass) 10%,transparent)}
+.req-box details summary{cursor:pointer;margin-top:4px}
+.who2{display:flex;flex-direction:column;min-width:0}
+.who2 strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who2 span{overflow:hidden;text-overflow:ellipsis}
+.tp-box{display:flex;flex-direction:column;gap:6px;padding:10px;margin:4px 0 8px;border-radius:8px;background:var(--sunk)}
+.tp-code{font:600 18px var(--f-mono);letter-spacing:.06em;padding:4px 10px;border-radius:6px;background:var(--surface);border:1px solid var(--line);user-select:all}
+.gate h3{font-size:17px}
+@media (max-width:600px){ .staff-row{grid-template-columns:1fr} }
 .staff-row select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 6px}
 </style>
 </head>
@@ -1851,83 +1861,215 @@ function start(store) {
   }, (err) => toast(errMsg(err)));
 }
 
-/* ---------- Sign-in and team ---------- */
-const sb = (window.supabase && SUPABASE_URL.startsWith("https://")) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
-const G = { mode: "in", msg: "", busy: false };
+/* ---------- Sign-in, access requests and team ---------- */
+const RECOVERY_AT_LOAD = /type=recovery/.test(location.hash);
+const sb = (window.supabase && SUPABASE_URL.startsWith("https://")) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
+const MIN_PASS = 8;
+const G = { mode: "in", msg: "", busy: false, email: "", name: "", recovering: false, pendingTimer: null };
+const APP_URL = location.origin + location.pathname;
 function gate(html) { $("gateCard").innerHTML = html; $("gate").hidden = false; }
+const brand = `<h2>Bilheteira <span>União Académica de Avintes</span></h2>`;
 function renderLogin() {
-  const up = G.mode === "up";
-  gate(`<h2>Bilheteira <span>União Académica de Avintes</span></h2>
-    <p class="muted" style="margin:0">${up ? "Crie a sua conta. Depois de confirmar o email, o responsável tem de a autorizar na lista da equipa." : "Entre com a conta da equipa."}</p>
-    <form id="loginForm" class="panel" style="gap:10px">
-      <div class="field"><label for="lg-email">Email</label><input id="lg-email" type="email" autocomplete="username" required></div>
-      <div class="field"><label for="lg-pass">Palavra-passe</label><input id="lg-pass" type="password" autocomplete="${up ? "new-password" : "current-password"}" minlength="6" required></div>
-      ${G.msg ? `<p class="small" style="margin:0">${G.msg}</p>` : ""}
-      <div class="row-btns"><button class="btn primary" type="submit" ${G.busy ? "disabled" : ""}>${up ? "Criar conta" : "Entrar"}</button>
-      <button class="btn ghost sm" type="button" id="lg-switch">${up ? "Já tenho conta" : "Criar conta"}</button></div>
+  const m = G.mode;
+  const intro = { in: "Entre com a sua conta.", up: "Crie a sua conta. Um Admin tem de a aprovar antes de poder usar a bilheteira.", reset: "Indique o email da sua conta. Enviamos-lhe um link para criar uma nova palavra-passe." }[m];
+  gate(`${brand}
+    <p class="muted" style="margin:0">${intro}</p>
+    <form id="loginForm" class="panel" style="gap:10px" novalidate>
+      ${m === "up" ? `<div class="field"><label for="lg-name">Nome</label><input id="lg-name" autocomplete="name" value="${esc(G.name)}" required></div>` : ""}
+      <div class="field"><label for="lg-email">Email</label><input id="lg-email" type="email" autocomplete="username" value="${esc(G.email)}" required></div>
+      ${m !== "reset" ? `<div class="field"><label for="lg-pass">Palavra-passe${m === "up" ? ` (mínimo ${MIN_PASS} caracteres)` : ""}</label><input id="lg-pass" type="password" autocomplete="${m === "up" ? "new-password" : "current-password"}" required></div>` : ""}
+      ${m === "up" ? `<div class="field"><label for="lg-pass2">Repetir palavra-passe</label><input id="lg-pass2" type="password" autocomplete="new-password" required></div>` : ""}
+      ${G.msg ? `<p class="small" style="margin:0" role="status">${G.msg}</p>` : ""}
+      <div class="row-btns"><button class="btn primary" type="submit" ${G.busy ? "disabled" : ""}>${{ in: "Entrar", up: "Criar conta", reset: "Enviar link" }[m]}</button>
+        ${m === "in" ? `<button class="btn ghost sm" type="button" data-lg="up">Criar conta</button>` : `<button class="btn ghost sm" type="button" data-lg="in">Voltar a entrar</button>`}</div>
+      ${m === "in" ? `<button class="linkbtn small" type="button" data-lg="reset" style="align-self:flex-start">Esqueci-me da palavra-passe</button>` : ""}
     </form>`);
-  $("lg-switch").onclick = () => { G.mode = up ? "in" : "up"; G.msg = ""; renderLogin(); };
+  $("gateCard").querySelectorAll("[data-lg]").forEach(x => x.onclick = () => { G.email = $("lg-email").value.trim(); G.mode = x.dataset.lg; G.msg = ""; renderLogin(); });
+  const first = m === "up" ? $("lg-name") : G.email && $("lg-pass") ? $("lg-pass") : $("lg-email"); first && first.focus();
   $("loginForm").onsubmit = async (e) => {
     e.preventDefault();
-    const email = $("lg-email").value.trim().toLowerCase(), password = $("lg-pass").value;
-    G.busy = true; G.msg = ""; renderLogin(); $("lg-email").value = email;
-    if (up) {
-      const r = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
-      G.busy = false;
-      if (r.error) G.msg = esc(r.error.message);
-      else if (r.data.session) { enter(r.data.session); return; }
-      else { G.mode = "in"; G.msg = `Enviámos um email de confirmação para <b>${esc(email)}</b>. Clique no link do email (se abrir uma página de erro, ignore: a conta fica confirmada) e depois entre aqui.`; }
-      renderLogin(); $("lg-email").value = email; return;
+    const email = $("lg-email").value.trim().toLowerCase(); G.email = email;
+    if (!/^\S+@\S+\.\S+$/.test(email)) { G.msg = "Escreva um email válido."; renderLogin(); return; }
+    if (m === "reset") {
+      G.busy = true; renderLogin();
+      const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL });
+      G.busy = false; G.mode = "in";
+      G.msg = r.error
+        ? `Não foi possível enviar o email agora. Peça a um Admin uma <b>palavra-passe temporária</b> (em Equipa).`
+        : `Se existir uma conta com <b>${esc(email)}</b>, enviámos um link para criar uma nova palavra-passe. Veja também a pasta de spam. Se não chegar em 10 minutos, peça a um Admin uma <b>palavra-passe temporária</b>.`;
+      renderLogin(); return;
     }
+    const password = $("lg-pass").value;
+    if (m === "up") {
+      const name = $("lg-name").value.trim(); G.name = name;
+      if (!name) { G.msg = "Escreva o seu nome."; renderLogin(); return; }
+      if (password.length < MIN_PASS) { G.msg = `A palavra-passe tem de ter pelo menos ${MIN_PASS} caracteres.`; renderLogin(); return; }
+      if (password !== $("lg-pass2").value) { G.msg = "As palavras-passe não são iguais."; renderLogin(); return; }
+      G.busy = true; G.msg = ""; renderLogin();
+      const r = await sb.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: APP_URL } });
+      G.busy = false;
+      if (r.error) { G.msg = /registered|already/i.test(r.error.message) ? "Já existe uma conta com este email. Entre, ou use “Esqueci-me da palavra-passe”." : /password/i.test(r.error.message) ? "Essa palavra-passe não é aceite. Escolha uma mais forte." : "Não foi possível criar a conta: " + esc(r.error.message); renderLogin(); return; }
+      if (r.data.session) { enter(r.data.session); return; }
+      G.mode = "in"; G.msg = `Conta criada. Confirme o email que enviámos para <b>${esc(email)}</b> e depois entre aqui. Um Admin terá de aprovar o seu acesso.`; renderLogin(); return;
+    }
+    if (!password) { G.msg = "Escreva a palavra-passe."; renderLogin(); return; }
+    G.busy = true; G.msg = ""; renderLogin();
     const r = await sb.auth.signInWithPassword({ email, password });
     G.busy = false;
-    if (r.error) { G.msg = /confirm/i.test(r.error.message) ? "Ainda não confirmou o email. Abra o link que recebeu e tente de novo." : "Email ou palavra-passe incorretos."; renderLogin(); $("lg-email").value = email; return; }
+    if (r.error) { G.msg = /confirm/i.test(r.error.message) ? "Ainda não confirmou o email. Abra o link que recebeu e tente de novo." : "Email ou palavra-passe incorretos."; renderLogin(); return; }
     enter(r.data.session);
   };
 }
-async function enter(session) {
+function renderNewPassword(session, reason, onDone) {
+  const intro = { recovery: "Escolha uma nova palavra-passe para a sua conta.", temp: "Entrou com uma palavra-passe temporária. Escolha agora a sua palavra-passe.", change: "Escolha uma nova palavra-passe." }[reason];
+  gate(`${brand}<h3 style="margin:0">Nova palavra-passe</h3><p class="muted" style="margin:0">${intro}</p>
+    <form id="npForm" class="panel" style="gap:10px" novalidate>
+      <input type="email" autocomplete="username" value="${esc(session.user.email || "")}" hidden readonly>
+      <div class="field"><label for="np-1">Nova palavra-passe (mínimo ${MIN_PASS} caracteres)</label><input id="np-1" type="password" autocomplete="new-password" required></div>
+      <div class="field"><label for="np-2">Repetir palavra-passe</label><input id="np-2" type="password" autocomplete="new-password" required></div>
+      <p class="small" style="margin:0" id="np-msg" role="status"></p>
+      <div class="row-btns"><button class="btn primary" type="submit" id="np-save">Guardar palavra-passe</button>${reason === "change" ? `<button class="btn ghost sm" type="button" id="np-cancel">Cancelar</button>` : `<button class="btn ghost sm" type="button" id="np-out">Sair</button>`}</div>
+    </form>`);
+  $("np-1").focus();
+  if ($("np-cancel")) $("np-cancel").onclick = () => { $("gate").hidden = true; };
+  if ($("np-out")) $("np-out").onclick = () => sb.auth.signOut().then(() => location.replace(APP_URL));
+  $("npForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const p1 = $("np-1").value, p2 = $("np-2").value, msg = $("np-msg");
+    if (p1.length < MIN_PASS) { msg.textContent = `A palavra-passe tem de ter pelo menos ${MIN_PASS} caracteres.`; return; }
+    if (p1 !== p2) { msg.textContent = "As palavras-passe não são iguais."; return; }
+    $("np-save").disabled = true;
+    const r = await sb.auth.updateUser({ password: p1, data: { must_change_password: false } });
+    if (r.error) { $("np-save").disabled = false; msg.textContent = /same|different/i.test(r.error.message) ? "A nova palavra-passe tem de ser diferente da anterior." : "Não foi possível guardar: " + r.error.message; return; }
+    toast("Palavra-passe guardada.");
+    if (location.hash) history.replaceState(null, "", APP_URL);
+    if (onDone) onDone(); else { const { data } = await sb.auth.getSession(); enter(data.session); }
+  };
+}
+async function showPending(session) {
   const email = (session.user.email || "").toLowerCase();
-  const r = await sb.from("staff").select("email,is_admin").eq("email", email).maybeSingle();
-  if (r.error || !r.data) {
-    gate(`<h2>Conta por autorizar</h2><p style="margin:0">A conta <b>${esc(email)}</b> ainda não faz parte da equipa da bilheteira. Peça a um responsável que a adicione em <b>Equipa</b>.</p>
-      <div class="row-btns"><button class="btn sm" type="button" id="gt-retry">Tentar de novo</button><button class="btn ghost sm" type="button" id="gt-out">Sair</button></div>`);
-    $("gt-retry").onclick = () => enter(session); $("gt-out").onclick = () => sb.auth.signOut().then(() => location.reload());
-    return;
-  }
-  S.me = { email, admin: !!r.data.is_admin };
+  const q = await sb.from("access_requests").select("status,created_at").eq("email", email).maybeSingle();
+  const st = q.data && q.data.status;
+  const body = st === "rejected"
+    ? `<h3 style="margin:0">Pedido recusado</h3><p style="margin:0">O pedido de acesso de <b>${esc(email)}</b> foi recusado. Se acha que é um engano, fale com a direção da associação.</p>`
+    : st === "pending"
+    ? `<h3 style="margin:0">Aguarda aprovação</h3><p style="margin:0">O seu pedido de acesso foi enviado${q.data.created_at ? " em " + dt(q.data.created_at) : ""}. Um Admin tem de aprovar a conta <b>${esc(email)}</b>.</p><p class="small muted" style="margin:0">Pode deixar esta página aberta: entra automaticamente quando for aprovado.</p>`
+    : `<h3 style="margin:0">Conta por autorizar</h3><p style="margin:0">A conta <b>${esc(email)}</b> não faz parte da equipa da bilheteira. Peça a um Admin que a adicione em <b>Equipa</b>.</p>`;
+  gate(`${brand}${body}<div class="row-btns"><button class="btn sm" type="button" id="gt-retry">Verificar agora</button><button class="btn ghost sm" type="button" id="gt-out">Sair</button></div>`);
+  $("gt-retry").onclick = () => enter(session);
+  $("gt-out").onclick = () => { clearInterval(G.pendingTimer); sb.auth.signOut().then(() => location.replace(APP_URL)); };
+  clearInterval(G.pendingTimer);
+  if (st !== "rejected") G.pendingTimer = setInterval(async () => {
+    const r = await sb.from("staff").select("email").eq("email", email).maybeSingle();
+    if (r.data) { clearInterval(G.pendingTimer); enter(session); }
+  }, 15000);
+}
+function renderWho() {
+  const n = S.pendingCount || 0;
+  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(S.me.name || S.me.email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="cash-open-ui" id="cashBtn">Caixa</button><button class="btn ghost sm" type="button" data-act="rep-open">Relatórios</button><button class="btn ghost sm" type="button" data-act="staff-open">Equipa${n ? ` <span class="badge" title="${n} pedido${n === 1 ? "" : "s"} de acesso">${n}</span>` : ""}</button>` : ""}<button class="btn ghost sm" type="button" id="chpass">Palavra-passe</button><button class="btn ghost sm" type="button" id="logout">Sair</button>`;
+  $("logout").onclick = () => sb.auth.signOut().then(() => location.replace(APP_URL));
+  $("chpass").onclick = async () => { const { data } = await sb.auth.getSession(); renderNewPassword(data.session, "change", () => { $("gate").hidden = true; }); };
+  if (S.me.admin) renderCashBtn();
+}
+async function refreshPending() {
+  if (!S.me || !S.me.admin) return;
+  const r = await sb.rpc("list_access_requests");
+  S.requests = r.error ? [] : r.data;
+  S.pendingCount = S.requests.filter(x => x.status === "pending").length;
+  renderWho();
+  if (!$("staffOverlay").hidden) renderStaff();
+}
+async function enter(session) {
+  clearInterval(G.pendingTimer);
+  if (!session) { renderLogin(); return; }
+  if (session.user.user_metadata && session.user.user_metadata.must_change_password) { renderNewPassword(session, "temp"); return; }
+  const email = (session.user.email || "").toLowerCase();
+  const r = await sb.from("staff").select("email,is_admin,name").eq("email", email).maybeSingle();
+  if (r.error || !r.data) { showPending(session); return; }
+  S.me = { email, admin: !!r.data.is_admin, name: r.data.name || (session.user.user_metadata || {}).name || "" };
   S.readOnly = !S.me.admin;
   document.body.classList.toggle("role-user", !S.me.admin);
   if (!S.me.admin) S.tab = "scan";
-  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="cash-open-ui" id="cashBtn">Caixa</button><button class="btn ghost sm" type="button" data-act="rep-open">Relatórios</button><button class="btn ghost sm" type="button" data-act="staff-open">Equipa</button>` : ""}<button class="btn ghost sm" type="button" id="logout">Sair</button>`;
-  $("logout").onclick = () => sb.auth.signOut().then(() => location.reload());
+  renderWho();
   $("gate").hidden = true;
   if (!S.store) start(makeSupaStore(sb));
   if (S.me.admin && S.store.finance && !S.unsubC) S.unsubC = S.store.finance.onCash((c) => { S.cash = c; renderCashBtn(); if (!$("cashOverlay").hidden && !S.cashResult) keepFocus(() => renderCash(false)); keepFocus(renderPanel); });
   if (S.eventId && canFinance() && !S.unsubF) { const id = S.eventId; S.unsubF = S.store.finance.onEvent(id, (d) => { S.payments = d.payments; S.expenses = d.expenses; keepFocus(() => { renderTabs(); renderPanel(); }); }); }
+  if (S.me.admin && !S.reqChannel) {
+    S.reqChannel = sb.channel("pedidos").on("postgres_changes", { event: "*", schema: "public", table: "access_requests" }, () => refreshPending()).subscribe();
+    setInterval(() => { if (document.visibilityState === "visible") refreshPending(); }, 60000);
+    refreshPending();
+  }
+}
+function tempPassword() {
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789", a = new Uint32Array(10); crypto.getRandomValues(a);
+  const c = Array.from(a, x => A[x % A.length]).join(""); return c.slice(0, 5) + "-" + c.slice(5);
+}
+async function callAdmin(body) {
+  const r = await sb.functions.invoke("admin-users", { body });
+  if (!r.error) return r.data;
+  let code = "server"; try { code = (await r.error.context.json()).error || code; } catch (e) {}
+  const err = new Error(code); err.code = code; throw err;
 }
 async function renderStaff() {
   const o = $("staffOverlay");
-  const r = await sb.from("staff").select("email,is_admin").order("email");
+  const [r, q] = await Promise.all([sb.from("staff").select("email,is_admin,name").order("email"), sb.rpc("list_access_requests")]);
+  S.requests = q.error ? [] : q.data; S.pendingCount = S.requests.filter(x => x.status === "pending").length; renderWho();
+  const pend = S.requests.filter(x => x.status === "pending"), rej = S.requests.filter(x => x.status === "rejected");
   const roleSel = (x) => `<select data-staff-role="${esc(x.email)}" aria-label="Perfil de ${esc(x.email)}"><option value="admin" ${x.is_admin ? "selected" : ""}>Admin</option><option value="user" ${x.is_admin ? "" : "selected"}>User</option></select>`;
-  const rows = (r.data || []).map(x => `<div class="staff-row"><span>${esc(x.email)}</span>
-    ${x.email === S.me.email ? `<span class="role-pill admin">Admin</span><span class="small muted">(você)</span>` : `${roleSel(x)}<button class="btn ghost sm" type="button" data-staff-del="${esc(x.email)}">Remover</button>`}</div>`).join("");
-  o.innerHTML = `<div class="card" role="dialog" aria-label="Equipa"><div class="card-head"><h3>Equipa</h3></div>
-    <p class="small muted" style="margin:0">Só os emails desta lista entram na bilheteira. Cada pessoa cria a sua conta no ecrã de entrada com o mesmo email.<br><b>Admin</b>: acesso total. <b>User</b>: apenas valida entradas nos eventos.</p>
+  const who = (name, email) => `<span class="who2"><strong>${esc(name || email)}</strong>${name ? `<span class="small muted">${esc(email)}</span>` : ""}</span>`;
+  const tp = S.tempPass;
+  const rows = (r.data || []).map(x => `<div class="staff-row">${who(x.name, x.email)}
+    ${x.email === S.me.email ? `<span class="role-pill admin">Admin</span><span class="small muted">(você)</span>` : `${roleSel(x)}<span class="row-btns"><button class="btn ghost sm" type="button" data-staff-pass="${esc(x.email)}">Palavra-passe temporária</button><button class="btn ghost sm" type="button" data-staff-del="${esc(x.email)}">Remover</button></span>`}</div>
+    ${tp && tp.email === x.email ? `<div class="tp-box">${tp.done
+      ? `<p style="margin:0">Palavra-passe temporária de <b>${esc(x.name || x.email)}</b>:</p><div class="row-btns"><code class="tp-code" id="tp-code">${esc(tp.password)}</code><button class="btn sm" type="button" id="tp-copy">Copiar</button></div><p class="small muted" style="margin:0">Entregue-a pessoalmente ou por telefone. Ao entrar, a pessoa terá de escolher uma palavra-passe nova.</p><div class="row-btns"><button class="btn ghost sm" type="button" id="tp-close">Concluído</button></div>`
+      : `<p style="margin:0">Definir uma palavra-passe temporária para <b>${esc(x.name || x.email)}</b>? A palavra-passe atual deixa de funcionar.</p><div class="row-btns"><code class="tp-code">${esc(tp.password)}</code></div><div class="row-btns"><button class="btn primary sm" type="button" id="tp-go">Definir palavra-passe</button><button class="btn ghost sm" type="button" id="tp-close">Cancelar</button></div>`}</div>` : ""}`).join("");
+  const reqRow = (x) => `<div class="staff-row">${who(x.name, x.email)}<span class="small muted">${dt(x.created_at)}</span>
+    <span class="row-btns"><button class="btn primary sm" type="button" data-req-ok="${esc(x.email)}" data-admin="0">Aprovar · User</button><button class="btn sm" type="button" data-req-ok="${esc(x.email)}" data-admin="1">Aprovar · Admin</button>${x.status === "pending" ? `<button class="btn ghost sm" type="button" data-req-no="${esc(x.email)}">Recusar</button>` : ""}</span></div>`;
+  o.innerHTML = `<div class="card" role="dialog" aria-label="Equipa" style="width:min(720px,100%)"><div class="card-head"><h3>Equipa</h3><button class="btn ghost sm" type="button" id="st-close">Fechar</button></div>
+    <div class="req-box"><div class="card-head"><h3>Pedidos de acesso</h3>${pend.length ? `<span class="badge">${pend.length}</span>` : ""}</div>
+      ${pend.length ? pend.map(reqRow).join("") : `<p class="small muted" style="margin:0">Não há pedidos por aprovar. Quem criar conta no ecrã de entrada aparece aqui.</p>`}
+      ${rej.length ? `<details><summary class="small muted">Recusados (${rej.length})</summary>${rej.map(reqRow).join("")}</details>` : ""}</div>
+    <p class="small muted" style="margin:0"><b>Admin</b>: acesso total. <b>User</b>: apenas valida entradas nos eventos.</p>
     <div>${rows}</div>
+    <hr>
+    <p class="small muted" style="margin:0">Também pode autorizar um email antes de a pessoa criar conta: ao registar-se com esse email, entra logo.</p>
     <div class="grid2" style="align-items:end"><div class="field"><label for="st-email">Adicionar email</label><input id="st-email" type="email" placeholder="nome@exemplo.pt"></div>
     <div class="field"><label for="st-role">Perfil</label><select id="st-role"><option value="user" selected>User — só valida entradas</option><option value="admin">Admin — acesso total</option></select></div></div>
-    <div class="row-btns"><button class="btn primary sm" type="button" id="st-add">Adicionar</button><button class="btn ghost sm" type="button" id="st-close">Fechar</button></div></div>`;
+    <div class="row-btns"><button class="btn sm" type="button" id="st-add">Adicionar</button></div></div>`;
   o.hidden = false;
-  $("st-close").onclick = () => { o.hidden = true; };
+  $("st-close").onclick = () => { o.hidden = true; S.tempPass = null; };
   $("st-add").onclick = async () => {
     const email = $("st-email").value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(email)) { toast("Escreva um email válido."); return; }
     const x = await sb.from("staff").insert({ email, is_admin: $("st-role").value === "admin" });
-    if (x.error) toast(x.error.code === "23505" ? "Esse email já está na equipa." : "Não foi possível adicionar."); else { toast("Adicionado à equipa."); renderStaff(); }
+    if (x.error) toast(x.error.code === "23505" ? "Esse email já está na equipa." : "Não foi possível adicionar.");
+    else { if (S.requests.some(y => y.email === email)) await sb.rpc("approve_access", { p_email: email, p_admin: $("st-role").value === "admin" }); toast("Adicionado à equipa."); renderStaff(); }
   };
+  o.querySelectorAll("[data-req-ok]").forEach(b => b.onclick = async () => {
+    b.disabled = true; const adm = b.dataset.admin === "1";
+    const x = await sb.rpc("approve_access", { p_email: b.dataset.reqOk, p_admin: adm });
+    if (x.error) { b.disabled = false; toast("Não foi possível aprovar."); } else { toast(`${b.dataset.reqOk} aprovado como ${adm ? "Admin" : "User"}.`); renderStaff(); }
+  });
+  o.querySelectorAll("[data-req-no]").forEach(b => b.onclick = async () => {
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirmar recusa"; b.classList.add("danger"); return; }
+    const x = await sb.rpc("reject_access", { p_email: b.dataset.reqNo });
+    if (x.error) toast("Não foi possível recusar."); else { toast("Pedido recusado."); renderStaff(); }
+  });
   o.querySelectorAll("[data-staff-role]").forEach(sel => sel.onchange = async () => {
     const x = await sb.from("staff").update({ is_admin: sel.value === "admin" }).eq("email", sel.dataset.staffRole);
     if (x.error) { toast("Não foi possível alterar o perfil."); renderStaff(); } else toast(`${sel.dataset.staffRole} passou a ${sel.value === "admin" ? "Admin" : "User"}. A alteração aplica-se quando essa pessoa voltar a abrir a bilheteira.`);
   });
+  o.querySelectorAll("[data-staff-pass]").forEach(b => b.onclick = () => { S.tempPass = { email: b.dataset.staffPass, password: tempPassword(), done: false }; renderStaff(); });
+  if ($("tp-close")) $("tp-close").onclick = () => { S.tempPass = null; renderStaff(); };
+  if ($("tp-copy")) $("tp-copy").onclick = async () => { try { await navigator.clipboard.writeText(S.tempPass.password); toast("Palavra-passe copiada."); } catch (e) { const rg = document.createRange(); rg.selectNodeContents($("tp-code")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg); } };
+  if ($("tp-go")) $("tp-go").onclick = async () => {
+    $("tp-go").disabled = true;
+    try { await callAdmin({ action: "set_password", email: S.tempPass.email, password: S.tempPass.password }); S.tempPass.done = true; renderStaff(); }
+    catch (e) {
+      $("tp-go").disabled = false;
+      toast({ no_account: "Esta pessoa ainda não criou conta. Peça-lhe que use “Criar conta” no ecrã de entrada.", denied: "Só um Admin pode fazer isto.", not_team: "Esse email não está na equipa.", weak_password: "Palavra-passe demasiado curta." }[e.code] || "Não foi possível definir a palavra-passe. Verifique a ligação e tente de novo.");
+    }
+  };
   o.querySelectorAll("[data-staff-del]").forEach(b => b.onclick = async () => {
     if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirmar remoção"; b.classList.add("danger"); return; }
     const x = await sb.from("staff").delete().eq("email", b.dataset.staffDel);
@@ -1935,6 +2077,7 @@ async function renderStaff() {
   });
 }
 document.addEventListener("click", (e) => { if (e.target.closest('[data-act="staff-open"]')) renderStaff(); });
+if (sb) sb.auth.onAuthStateChange((ev, session) => { if (ev === "PASSWORD_RECOVERY" && session && !G.recovering) { G.recovering = true; renderNewPassword(session, "recovery"); } });
 
 renderAll();
 (async () => {
@@ -1944,6 +2087,9 @@ renderAll();
     start(makeMemStore(DEMO)); return;
   }
   const { data } = await sb.auth.getSession();
+  if (G.recovering) return;
+  if (RECOVERY_AT_LOAD && data && data.session) { G.recovering = true; renderNewPassword(data.session, "recovery"); return; }
+  if (/error_description=/.test(location.hash)) { G.msg = "O link expirou ou já foi usado. Peça um novo em “Esqueci-me da palavra-passe”."; history.replaceState(null, "", APP_URL); renderLogin(); return; }
   if (data && data.session) enter(data.session); else renderLogin();
 })();
 })();
