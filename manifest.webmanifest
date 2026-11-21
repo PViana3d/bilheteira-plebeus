@@ -1,0 +1,18 @@
+{
+  "name": "Bilheteira União Académica de Avintes",
+  "short_name": "Bilheteira UAA",
+  "description": "Reservas, bilhetes, entradas e finanças do auditório da União Académica de Avintes.",
+  "lang": "pt-PT",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f2f1f4",
+  "theme_color": "#9a1d3c",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -2,8 +2,16 @@
 <html lang="pt-PT">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Bilheteira União Académica de Avintes</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#9a1d3c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bilheteira UAA">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -28,7 +36,7 @@
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body);
-  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 40px}
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:calc(16px + env(safe-area-inset-top, 0px));padding-bottom:calc(40px + env(safe-area-inset-bottom, 0px))}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
@@ -185,6 +193,35 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0;width:100%}
 .dot.ok{background:var(--ok)} .dot.used{background:var(--warn)} .dot.bad{background:var(--velvet)} .dot.due{background:var(--warn)}
 
 /* standalone extras */
+.cam{position:fixed;inset:0;z-index:40;background:#000;display:flex;flex-direction:column;color:#fff;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.cam[hidden]{display:none}
+.cam-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px}
+.cam-top b{font:700 16px var(--f-display)}
+.cam-top button{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:600}
+.cam-view{flex:1;min-height:0;position:relative;overflow:hidden}
+/* The reader works at full camera resolution (1280 px wide) and is scaled down on screen, so thin barcode bars stay readable. */
+#camReader{width:1280px;position:absolute;left:0;top:0;transform-origin:0 0}
+#camReader video{display:block}
+.cam-res{padding:12px 16px 18px;display:flex;flex-direction:column;gap:8px}
+.cam-res .verdict{color:var(--ink);background:var(--surface)}
+.cam-res .verdict.ok{background:#e3f3ea} .cam-res .verdict.used,.cam-res .verdict.due{background:#fbe9dc} .cam-res .verdict.bad{background:#f8e1e7}
+.cam-res .hint{font-size:13px;opacity:.8;text-align:center}
+.cam-count{font:600 13px var(--f-mono);opacity:.85}
+.offline{background:color-mix(in srgb,var(--warn) 18%,var(--bg));color:var(--ink)}
+.install-steps{display:flex;flex-direction:column;gap:10px;margin:0;padding-left:20px}
+@media (max-width:700px){
+  .top h1{font-size:20px}
+  .top .sub{display:none}
+  .whobar{width:100%;gap:4px}
+  .whobar .btn.sm{padding:4px 8px}
+  .card{padding:12px}
+  .evhead h2{font-size:19px}
+  .stats{gap:12px}
+  .stat b{font-size:17px}
+  body.role-user .app > .rail{order:-2}
+  body.role-user .app > .panel{order:-1}
+  .gate .card{padding:16px}
+}
 body{margin:0}
 [hidden]{display:none!important}
 .top .spacer{flex:1}
@@ -273,6 +310,7 @@ details.histbox summary{cursor:pointer;font-weight:600;font-size:13px}
   <span class="spacer"></span>
   <div class="whobar" id="who"></div>
 </header>
+<div class="banner offline" id="netBanner" hidden>Sem ligação à internet. Pode consultar o que está no ecrã, mas nada é gravado até a ligação voltar.</div>
 <div class="banner" id="banner" hidden></div>
 
 <div class="app">
@@ -313,6 +351,13 @@ details.histbox summary{cursor:pointer;font-weight:600;font-size:13px}
 <div class="overlay" id="ticketOverlay" hidden></div>
 <div class="toast" id="toast" hidden></div>
 <div class="overlay" id="staffOverlay" hidden></div>
+<div class="overlay" id="installOverlay" hidden></div>
+<div class="cam" id="camOverlay" hidden>
+  <div class="cam-top"><b>Ler bilhetes</b><span class="cam-count" id="camCount"></span><button type="button" id="camClose">Fechar</button></div>
+  <div class="cam-view"><div id="camReader"></div></div>
+  <div class="cam-res"><div id="camVerdict"></div><div class="hint" id="camHint">Aponte a câmara para o código de barras do bilhete.</div></div>
+</div>
+<div id="camFile" hidden></div>
 <div class="overlay" id="cashOverlay" hidden></div>
 <div class="gate" id="gate"><div class="card" id="gateCard"><p class="muted" style="margin:0">A abrir…</p></div></div>
 
@@ -355,9 +400,10 @@ function loadScript(src) {
   return scriptCache[src] = scriptCache[src] || new Promise((ok, fail) => { const el = document.createElement("script"); el.src = src; el.onload = ok; el.onerror = () => { delete scriptCache[src]; fail(new Error("load")); }; document.head.appendChild(el); });
 }
 const LIB = {
-  pdf: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+  pdf: "vendor/jspdf.umd.min.js",
+  scanner: "vendor/html5-qrcode.min.js",
   barcode: "https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js",
-  zxing: "https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"
+  zxing: ""
 };
 function loadImage(src) { return new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; }); }
 function isObj(v) { return v && typeof v === "object" && !Array.isArray(v); }
@@ -879,7 +925,7 @@ function renderPanel() {
   const body = $("panelBody"), ev = curEvent();
   if (!ev) { body.innerHTML = `<div class="card"><p class="muted" style="margin:0">Selecione um evento à esquerda para reservar lugares e registar entradas.</p></div>`; return; }
   body.innerHTML = (isUser() || S.tab === "scan") ? scanPanel() : S.tab === "list" ? listPanel() : (S.tab === "fin" && canFinance()) ? financePanel() : (S.tab === "wait" && canFinance()) ? waitPanel() : bookPanel();
-  if (isUser() && !document.querySelector(".overlay:not([hidden])")) { const i = $("scan-input"); if (i && document.activeElement !== i && !(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) i.focus({ preventScroll: true }); }
+  if (isUser() && finePointer() && !CAM.on && !document.querySelector(".overlay:not([hidden])")) { const i = $("scan-input"); if (i && document.activeElement !== i && !(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) i.focus({ preventScroll: true }); }
 }
 function bookPanel() {
   let html = "";
@@ -1283,6 +1329,7 @@ document.addEventListener("click", async (e) => {
     case "tk-print": printTickets(btn); break;
     case "tk-pdf": downloadTicketsPdf(btn); break;
     case "logo-del": await run(() => S.store.setLogo(ev.id, null), "Logotipo removido."); renderHeader(); break;
+    case "cam-open": camOpen(); break;
     case "scan-go": { const v = S.scanInput; S.scanInput = ""; validateCode(v); break; }
     case "fin-exp-pay": exportEventPayments(); break;
     case "fin-exp-sum": exportEventSummary(); break;
@@ -1557,7 +1604,8 @@ async function validateCode(raw) {
     res.code = code; res.at = new Date().toISOString();
     S.scan = res; S.scanLog = [res, ...S.scanLog].slice(0, 15);
     beep(res.kind === "ok" || res.kind === "due"); renderPanel();
-    const inp0 = $("scan-input"); if (inp0) inp0.focus({ preventScroll: true });
+    const inp0 = $("scan-input"); if (inp0 && finePointer() && !CAM.on) inp0.focus({ preventScroll: true });
+    if (CAM.on) camShow(res);
     return;
   }
   const hit = S.ticketIndex.get(code);
@@ -1581,7 +1629,8 @@ async function validateCode(raw) {
   res.code = code; res.at = new Date().toISOString();
   S.scan = res; S.scanLog = [res, ...S.scanLog].slice(0, 15);
   beep(res.kind === "ok"); renderPanel();
-  const inp = $("scan-input"); if (inp) inp.focus({ preventScroll: true });
+  const inp = $("scan-input"); if (inp && finePointer() && !CAM.on) inp.focus({ preventScroll: true });
+  if (CAM.on) camShow(res);
 }
 function scanPanel() {
   const total = S.bookings.reduce((a, b) => a + (b.seats || []).length, 0), inn = S.bookings.reduce((a, b) => a + enteredCount(b), 0);
@@ -1594,45 +1643,78 @@ function scanPanel() {
     <div class="card-head"><h3>Validar entradas</h3><span class="mono small">${inn} / ${total}</span></div>
     ${canScan() ? `<div class="field scan-in"><label for="scan-input">Leia o código de barras com o leitor ou escreva o código</label>
       <input id="scan-input" data-f="scanInput" value="${esc(S.scanInput)}" placeholder="Código do bilhete" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"></div>
-    <div class="row-btns"><button class="btn primary sm" data-act="scan-go" type="button">Validar</button>
-      <label class="btn sm" for="scan-photo">Fotografar bilhete</label><input type="file" id="scan-photo" accept="image/*" capture="environment" hidden></div>
+    <div class="row-btns"><button class="btn primary sm" data-act="cam-open" type="button">Ler com a câmara</button><button class="btn sm" data-act="scan-go" type="button">Validar código</button>
+      <label class="btn ghost sm" for="scan-photo">Fotografia</label><input type="file" id="scan-photo" accept="image/*" capture="environment" hidden></div>
     ${verdict}
-    <p class="small muted" style="margin:0">Um leitor de códigos de barras USB ou Bluetooth funciona como teclado: com o cursor neste campo, cada leitura valida o bilhete de imediato. No telemóvel, use “Fotografar bilhete”.</p>`
+    <p class="small muted" style="margin:0">No telemóvel, use <b>Ler com a câmara</b>: valida cada bilhete assim que o código aparece. Num computador, um leitor de códigos de barras USB ou Bluetooth funciona como teclado: com o cursor neste campo, cada leitura valida o bilhete.</p>`
     : `<p class="muted" style="margin:0">Não tem permissão para registar entradas.</p>`}
   </div>
   ${log ? `<div class="card"><div class="card-head"><h3>Últimas leituras</h3></div><div class="log">${log}</div></div>` : ""}`;
 }
-function lumOf(img, rot, maxDim) {
-  const r = Math.min(1, maxDim / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
-  const w0 = Math.round((img.naturalWidth || img.width) * r), h0 = Math.round((img.naturalHeight || img.height) * r);
-  const w = rot ? h0 : w0, h = rot ? w0 : h0;
-  const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d");
-  if (rot) { x.translate(w, 0); x.rotate(Math.PI / 2); }
-  x.drawImage(img, 0, 0, w0, h0);
-  const d = x.getImageData(0, 0, w, h).data, lum = new Uint8ClampedArray(w * h);
-  for (let i = 0, j = 0; j < lum.length; i += 4, j++) lum[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
-  return { lum, w, h };
+/* ---------- Camera scanning ---------- */
+const CAM = { on: false, reader: null, last: "", lastAt: 0, busy: false, n: 0, hideT: null };
+function camShow(res) {
+  const v = $("camVerdict"); if (!v) return;
+  const icon = { ok: "✓", used: "!", bad: "✕", due: "€" };
+  v.innerHTML = `<div class="verdict ${res.kind}" role="status"><span class="ic" aria-hidden="true">${res.icon || icon[res.kind]}</span><b>${esc(res.title)}</b><span>${esc(res.detail)}</span></div>`;
+  $("camHint").textContent = "Pronto para o próximo bilhete.";
+  if (res.kind === "ok" || res.kind === "due") CAM.n++;
+  $("camCount").textContent = CAM.n ? `${CAM.n} entrada${CAM.n === 1 ? "" : "s"}` : "";
+  try { navigator.vibrate && navigator.vibrate(res.kind === "ok" ? 80 : [60, 60, 60]); } catch (e) {}
+  clearTimeout(CAM.hideT); CAM.hideT = setTimeout(() => { if (CAM.on) { v.innerHTML = ""; $("camHint").textContent = "Coloque o código de barras dentro da faixa, na horizontal."; } }, 6000);
 }
-async function decodePhoto(file) {
-  const url = URL.createObjectURL(file);
+async function camOpen() {
+  if (!curEvent()) { toast("Escolha o evento primeiro."); return; }
+  const o = $("camOverlay"); o.hidden = false; CAM.on = true; CAM.n = 0; $("camCount").textContent = ""; $("camVerdict").innerHTML = "";
+  $("camHint").textContent = "A ligar a câmara…";
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch (e) {}
   try {
-    const img = await loadImage(url);
-    if ("BarcodeDetector" in window) {
-      try { const det = new window.BarcodeDetector({ formats: ["code_128"] }); const found = await det.detect(img); if (found && found.length) return found[0].rawValue; } catch (e) {}
-    }
-    await loadScript(LIB.zxing);
-    const Z = window.ZXing; const hints = new Map();
-    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [Z.BarcodeFormat.CODE_128]); hints.set(Z.DecodeHintType.TRY_HARDER, true);
-    for (const size of [1600, 1000]) for (const rot of [0, 1]) {
-      const { lum, w, h } = lumOf(img, rot, size);
-      try {
-        const src = new Z.RGBLuminanceSource(lum, w, h, w, h, 0, 0);
-        const reader = new Z.MultiFormatReader(); reader.setHints(hints);
-        return reader.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(src)), hints).getText();
-      } catch (e) {}
-    }
-    return null;
-  } finally { URL.revokeObjectURL(url); }
+    await loadScript(LIB.scanner);
+    const H = window.Html5Qrcode, F = window.Html5QrcodeSupportedFormats;
+    CAM.reader = new H("camReader", { formatsToSupport: [F.CODE_128], verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
+    await CAM.reader.start({ facingMode: "environment" }, {
+      fps: 10, disableFlip: true,
+      videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+      qrbox: (w, h) => ({ width: Math.floor(w * 0.94), height: Math.max(120, Math.floor(Math.min(h * 0.6, w * 0.36))) })
+    }, async (text) => {
+      const code = String(text || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const now = Date.now();
+      if (!code || CAM.busy || (code === CAM.last && now - CAM.lastAt < 5000)) return;
+      CAM.busy = true; CAM.last = code; CAM.lastAt = now;
+      $("camHint").textContent = "A validar…";
+      try { await validateCode(code); } finally { setTimeout(() => { CAM.busy = false; }, 900); }
+    }, () => {});
+    camFit(); setTimeout(camFit, 400);
+    $("camHint").textContent = "Coloque o código de barras dentro da faixa, na horizontal.";
+  } catch (e) {
+    const msg = String((e && (e.name || e.message)) || e);
+    $("camHint").textContent = /NotAllowed|Permission/i.test(msg) ? "Sem autorização para usar a câmara. Autorize a câmara nas definições do navegador para este site e tente de novo."
+      : /NotFound|Overconstrained|no camera/i.test(msg) ? "Não foi encontrada nenhuma câmara neste aparelho."
+      : msg === "load" || /load/i.test(msg) ? "Não foi possível carregar o leitor. Verifique a ligação e tente de novo."
+      : "Não foi possível ligar a câmara. Feche outras aplicações que a estejam a usar e tente de novo.";
+  }
+}
+function camFit() {
+  const r = $("camReader"), box = r && r.parentElement; if (!r || !box || !CAM.on) return;
+  const w = 1280, h = r.offsetHeight || 720, k = Math.min(box.clientWidth / w, box.clientHeight / h);
+  r.style.transform = `scale(${k})`; r.style.left = Math.max(0, (box.clientWidth - w * k) / 2) + "px"; r.style.top = Math.max(0, (box.clientHeight - h * k) / 2) + "px";
+}
+window.addEventListener("resize", () => { if (CAM.on) camFit(); });
+async function camClose() {
+  CAM.on = false; clearTimeout(CAM.hideT);
+  try { if (CAM.reader) { if (CAM.reader.isScanning) await CAM.reader.stop(); CAM.reader.clear(); } } catch (e) {}
+  CAM.reader = null; $("camOverlay").hidden = true; renderPanel();
+}
+document.addEventListener("click", (e) => { if (e.target.closest("#camClose")) camClose(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && CAM.on) camClose(); });
+async function decodePhoto(file) {
+  if ("BarcodeDetector" in window) {
+    try { const url = URL.createObjectURL(file); const img = await loadImage(url); URL.revokeObjectURL(url);
+      const det = new window.BarcodeDetector({ formats: ["code_128"] }); const found = await det.detect(img); if (found && found.length) return found[0].rawValue; } catch (e) {}
+  }
+  await loadScript(LIB.scanner);
+  const r = new window.Html5Qrcode("camFile", { formatsToSupport: [window.Html5QrcodeSupportedFormats.CODE_128], verbose: false });
+  try { return await r.scanFile(file, false); } catch (e) { return null; } finally { try { r.clear(); } catch (e) {} }
 }
 
 /* ---------- Export ---------- */
@@ -1990,6 +2072,36 @@ function start(store) {
   }, (err) => toast(errMsg(err)));
 }
 
+/* ---------- Installable app (PWA) ---------- */
+const PWA = { prompt: null };
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const finePointer = () => matchMedia("(pointer: fine)").matches;
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); PWA.prompt = e; refreshInstall(); });
+window.addEventListener("appinstalled", () => { PWA.prompt = null; refreshInstall(); toast("Aplicação instalada."); });
+const canInstall = () => !isStandalone() && (!!PWA.prompt || isIOS() || !finePointer());
+function refreshInstall() { document.querySelectorAll("[data-install]").forEach(b => b.hidden = !canInstall()); }
+async function doInstall() {
+  if (PWA.prompt) { PWA.prompt.prompt(); try { await PWA.prompt.userChoice; } catch (e) {} PWA.prompt = null; refreshInstall(); return; }
+  const o = $("installOverlay");
+  const ios = isIOS();
+  o.innerHTML = `<div class="card" role="dialog" aria-label="Instalar a aplicação" style="width:min(440px,100%)"><div class="card-head"><h3>Instalar no telemóvel</h3><button class="btn ghost sm" type="button" id="inst-x">Fechar</button></div>
+    ${ios ? `<ol class="install-steps"><li>Abra esta página no <b>Safari</b>.</li><li>Toque no botão <b>Partilhar</b> (quadrado com seta para cima), na barra de baixo.</li><li>Escolha <b>Adicionar ao ecrã principal</b> e depois <b>Adicionar</b>.</li><li>Abra a Bilheteira pelo ícone novo no ecrã principal.</li></ol>`
+    : `<ol class="install-steps"><li>Abra esta página no <b>Chrome</b>.</li><li>Toque no menu <b>⋮</b> (canto superior direito).</li><li>Escolha <b>Instalar aplicação</b> (ou <b>Adicionar ao ecrã principal</b>).</li><li>Abra a Bilheteira pelo ícone novo.</li></ol>`}
+    <p class="small muted" style="margin:0">A aplicação instalada usa a mesma conta e os mesmos dados, e atualiza-se sozinha.</p></div>`;
+  o.hidden = false; $("inst-x").onclick = () => { o.hidden = true; };
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-install]")) doInstall(); });
+function netBanner() {
+  const b = $("netBanner"); if (!b) return;
+  b.hidden = navigator.onLine;
+}
+window.addEventListener("online", () => { netBanner(); toast("Ligação restabelecida."); if (S.store && S.store.finance) S.store.finance.refresh(); });
+window.addEventListener("offline", netBanner);
+
 /* ---------- Sign-in, access requests and team ---------- */
 const RECOVERY_AT_LOAD = /type=recovery/.test(location.hash);
 const sb = (window.supabase && SUPABASE_URL.startsWith("https://")) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
@@ -2012,6 +2124,7 @@ function renderLogin() {
       <div class="row-btns"><button class="btn primary" type="submit" ${G.busy ? "disabled" : ""}>${{ in: "Entrar", up: "Criar conta", reset: "Enviar link" }[m]}</button>
         ${m === "in" ? `<button class="btn ghost sm" type="button" data-lg="up">Criar conta</button>` : `<button class="btn ghost sm" type="button" data-lg="in">Voltar a entrar</button>`}</div>
       ${m === "in" ? `<button class="linkbtn small" type="button" data-lg="reset" style="align-self:flex-start">Esqueci-me da palavra-passe</button>` : ""}
+      ${canInstall() ? `<button class="btn sm" type="button" data-install style="align-self:flex-start">Instalar a aplicação no telemóvel</button>` : ""}
     </form>`);
   $("gateCard").querySelectorAll("[data-lg]").forEach(x => x.onclick = () => { G.email = $("lg-email").value.trim(); G.mode = x.dataset.lg; G.msg = ""; renderLogin(); });
   const first = m === "up" ? $("lg-name") : G.email && $("lg-pass") ? $("lg-pass") : $("lg-email"); first && first.focus();
@@ -2095,7 +2208,7 @@ async function showPending(session) {
 }
 function renderWho() {
   const n = S.pendingCount || 0;
-  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(S.me.name || S.me.email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="cash-open-ui" id="cashBtn">Caixa</button><button class="btn ghost sm" type="button" data-act="staff-open">Equipa${n ? ` <span class="badge" title="${n} pedido${n === 1 ? "" : "s"} de acesso">${n}</span>` : ""}</button>` : ""}<button class="btn ghost sm" type="button" id="chpass">Palavra-passe</button><button class="btn ghost sm" type="button" id="logout">Sair</button>`;
+  $("who").innerHTML = `<span class="role-pill ${S.me.admin ? "admin" : ""}">${S.me.admin ? "Admin" : "User"}</span><span>${esc(S.me.name || S.me.email)}</span>${S.me.admin ? `<button class="btn ghost sm" type="button" data-act="cash-open-ui" id="cashBtn">Caixa</button><button class="btn ghost sm" type="button" data-act="staff-open">Equipa${n ? ` <span class="badge" title="${n} pedido${n === 1 ? "" : "s"} de acesso">${n}</span>` : ""}</button>` : ""}<button class="btn ghost sm" type="button" data-install ${canInstall() ? "" : "hidden"}>Instalar app</button><button class="btn ghost sm" type="button" id="chpass">Palavra-passe</button><button class="btn ghost sm" type="button" id="logout">Sair</button>`;
   $("logout").onclick = () => sb.auth.signOut().then(() => location.replace(APP_URL));
   $("chpass").onclick = async () => { const { data } = await sb.auth.getSession(); renderNewPassword(data.session, "change", () => { $("gate").hidden = true; }); };
   if (S.me.admin) renderCashBtn();
