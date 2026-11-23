@@ -1,0 +1,9 @@
+// Cloudflare Worker that serves the Bilheteira as static files.
+// Files listed in .assetsignore (Windows shortcut, .reg files, notes) are not published.
+{
+  "name": "bilheteira-plebeus",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    "directory": "."
+  }
+}

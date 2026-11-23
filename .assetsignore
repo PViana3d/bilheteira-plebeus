@@ -1,0 +1,10 @@
+.git
+.gitignore
+.assetsignore
+wrangler.jsonc
+build.sh
+dist
+README.md
+*.bat
+*.reg
+*.sql

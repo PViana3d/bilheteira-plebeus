@@ -2,7 +2,7 @@
 
 Gestão de reservas, lugares, bilhetes e entradas do auditório.
 
-**Aplicação:** https://pviana3d.github.io/bilheteira-plebeus/
+**Aplicação:** https://bilheteira.pv3d.pt/ (Cloudflare; ficheiros não publicados em `.assetsignore`)
 
 - `index.html` — a aplicação (página única), instalável em Android e iPhone (PWA: `manifest.webmanifest`, `sw.js`, `icons/`).
 - `vendor/` — bibliotecas incluídas (leitor de códigos de barras e gerador de PDF); licenças em `vendor/LICENSES.md`. Os dados ficam no Supabase, protegidos por login e por perfis (Admin / User).
